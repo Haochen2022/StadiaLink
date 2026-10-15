@@ -1,8 +1,8 @@
-<div align="center">
+﻿<div align="center">
   <img src="app/assets/readme-logo.svg" width="112" height="112" alt="Logo StadiaLink">
   <h1>StadiaLink</h1>
   <p><strong>Votre Stadia. À votre façon.</strong></p>
-  <p>Configuration de la manette Stadia pour Windows 11 x64 · Version 1.0.1</p>
+  <p>Configuration de la manette Stadia pour Windows 11 x64 · Version 1.2.1</p>
   <p><a href="https://github.com/minysito/StadiaLink/releases/latest"><strong>⬇ Télécharger</strong></a> · <a href="https://github.com/minysito/StadiaLink/issues">Signaler un problème</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + Bluetooth</p>
   <p><a href="README.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <strong><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</strong> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a></p>
@@ -84,7 +84,7 @@ Si MSVC manque, vérifiez la charge de travail C++ de Visual Studio. Installez l
 
 ## ⚙️ Utilisation
 
-Réglez le profil et cliquez sur **Enregistrer et appliquer**. Changer d'onglet abandonne les modifications du profil non enregistrées. La case de démarrage avec Windows est enregistrée immédiatement et ouvre l'application dans la zone de notification à la connexion de cet utilisateur. Le test de vibration continu s'arrête avec **Arrêter**, au changement d'onglet, à la déconnexion ou à la fermeture.
+Le gain de vibration est appliqué et enregistré en déplaçant les curseurs. Pour les boutons, la langue et les autres modifications du profil, cliquez sur **Enregistrer et appliquer**. Changer d'onglet abandonne les modifications du profil non enregistrées. La case de démarrage avec Windows est enregistrée immédiatement et ouvre l'application dans la zone de notification à la connexion de cet utilisateur. Le test de vibration continu s'arrête avec **Arrêter**, au changement d'onglet, à la déconnexion ou à la fermeture.
 
 Les raccourcis nécessitent que l'application reste ouverte, même réduite dans la zone de notification. Configurez la même touche ou combinaison pour parler dans votre jeu ou application vocale. Le pilote conserve la configuration XInput appliquée après la fermeture de l'interface.
 
@@ -128,3 +128,5 @@ Référence : [commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.c
 ## ✨ Développement avec ChatGPT / Codex
 
 Le projet est géré et développé avec **ChatGPT / Codex**, selon une approche de **vibe coding** : le responsable définit les fonctionnalités et examine les résultats ; Codex aide à implémenter, rechercher, documenter et vérifier. Les tests sur la manette physique et la revue des changements font partie du travail. Cette assistance n'implique aucune certification ni approbation d'OpenAI, Google ou Microsoft.
+
+Le gain de vibration est appliqué et enregistré en déplaçant les curseurs. Les tests utilisent le même gain que les jeux. L’application recherche les nouvelles versions au démarrage et toutes les six heures ; le téléchargement est manuel dans les paramètres. `StadiaLink.Setup.exe` inclut l’application et le pilote. `StadiaLink.Update.exe` met à jour uniquement l’application, conserve les profils et exige un pilote installé compatible ; sinon, utilisez l’installateur complet.

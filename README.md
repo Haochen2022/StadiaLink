@@ -1,8 +1,8 @@
-<div align="center">
+﻿<div align="center">
   <img src="app/assets/readme-logo.svg" width="112" height="112" alt="StadiaLink logo">
   <h1>StadiaLink</h1>
   <p><strong>Tu Stadia. A tu manera.</strong></p>
-  <p>Configuración del mando Stadia para Windows 11 x64 · Versión 1.0.1</p>
+  <p>Configuración del mando Stadia para Windows 11 x64 · Versión 1.2.1</p>
   <p><a href="https://github.com/minysito/StadiaLink/releases/latest"><strong>⬇ Descargar</strong></a> · <a href="https://github.com/minysito/StadiaLink/issues">Comunicar un problema</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + Bluetooth</p>
   <p><strong><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</strong> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a></p>
@@ -90,7 +90,7 @@ Si falta MSVC, revisa la carga de trabajo C++ de Visual Studio. Si faltan cabece
 
 ## ⚙️ Uso
 
-Ajusta el perfil y pulsa **Guardar y aplicar**. Cambiar de pestaña descarta los cambios del perfil sin guardar. La casilla de inicio con Windows se guarda inmediatamente. La vibración continua se detiene con **Detener**, al cambiar de pestaña o al cerrar la app.
+La fuerza de vibración se aplica y guarda al mover las barras. Para botones, idioma y otros cambios del perfil, pulsa **Guardar y aplicar**. Cambiar de pestaña descarta los cambios del perfil sin guardar. La casilla de inicio con Windows se guarda inmediatamente. La vibración continua se detiene con **Detener**, al cambiar de pestaña o al cerrar la app.
 
 Los atajos de Windows requieren la app abierta. Los tiempos de respuesta mostrados en Ajustes miden consultas HID y actualización de la interfaz, no la latencia física completa hasta un juego. El audio del jack funciona por USB; no se ofrece audio Bluetooth ni activación de Wi-Fi.
 
@@ -138,3 +138,5 @@ Referencia de origen: [commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://
 ## ✨ Desarrollo con ChatGPT / Codex
 
 El proyecto está gestionado y desarrollado con ayuda de **ChatGPT / Codex**, mediante **vibe coding**: el responsable define las funciones y revisa los resultados; Codex ayuda a implementar, investigar, documentar y ejecutar comprobaciones. Las pruebas con el mando físico y la revisión de cambios forman parte del trabajo. Esta asistencia no implica certificación ni respaldo de OpenAI, Google o Microsoft.
+
+La fuerza de vibración se aplica y guarda al mover las barras. Las pruebas usan la misma ganancia que los juegos. La app comprueba nuevas versiones al abrirse y cada seis horas; la descarga es manual desde Ajustes. `StadiaLink.Setup.exe` incluye app y controlador. `StadiaLink.Update.exe` actualiza solo la app, conserva perfiles y comprueba que el controlador instalado sea compatible; si no lo es, utiliza el instalador completo.

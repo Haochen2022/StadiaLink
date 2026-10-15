@@ -9,7 +9,7 @@ namespace StadiaStudio {
     public sealed class PadStatus {
         public long SampleTicks;public byte[] Raw=new byte[10];public bool HasInput,RumbleFailed,Bluetooth;
         public uint OpenError,WriteError,Writes,Stops;public byte ConfigVersion;
-        public ulong Address;public uint PersistenceError;public bool RawMotorPreview;
+        public ulong Address;public uint PersistenceError;public bool RawMotorPreview,RumbleGainSupported;
         public bool[] Buttons {
             get {
                 byte a=Raw[2],b=Raw[3],h=Raw[1];
@@ -62,7 +62,7 @@ namespace StadiaStudio {
             byte[] b=Get(0xE1);PadStatus s=new PadStatus();s.RumbleFailed=b[1]!=0;s.HasInput=b[6]>=10;
             if(s.HasInput) Buffer.BlockCopy(b,7,s.Raw,0,10);else {s.Raw[1]=8;for(int i=4;i<8;i++)s.Raw[i]=128;}
             s.OpenError=BitConverter.ToUInt32(b,25);s.WriteError=BitConverter.ToUInt32(b,29);s.Writes=BitConverter.ToUInt32(b,37);s.Stops=BitConverter.ToUInt32(b,41);
-            s.Address=BitConverter.ToUInt64(b,45);s.Bluetooth=s.Address!=0;s.ConfigVersion=b[53];s.PersistenceError=BitConverter.ToUInt32(b,54);s.RawMotorPreview=b[58]!=0;return s;
+            s.Address=BitConverter.ToUInt64(b,45);s.Bluetooth=s.Address!=0;s.ConfigVersion=b[53];s.PersistenceError=BitConverter.ToUInt32(b,54);s.RawMotorPreview=b[58]!=0;s.RumbleGainSupported=b[59]!=0;return s;
         }
         public Profile Configuration(){return Profile.FromReport(Get(0xE2));}
         public void Apply(Profile p) {

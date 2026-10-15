@@ -1,4 +1,4 @@
-// Versioned configuration shared by the driver and its desktop application.
+﻿// Versioned configuration shared by the driver and its desktop application.
 // This module contains no WDF calls, so the real translation can be tested.
 #pragma once
 #include <stdint.h>
@@ -34,12 +34,17 @@ static int StadiaConfigValid(const STADIA_CONFIG* c) {
        c->LeftDeadzone>40 || c->RightDeadzone>40 || c->TriggerDeadzone>40 ||
        c->LeftSensitivity<50 || c->LeftSensitivity>200 ||
        c->RightSensitivity<50 || c->RightSensitivity>200 ||
-       c->StrongScale>100 || c->WeakScale>100 ||
+       c->StrongScale>200 || c->WeakScale>200 ||
        c->TriggerThreshold<1 || c->TriggerThreshold>100 || c->Reserved0 ||
        c->Checksum!=StadiaConfigChecksum(c)) return 0;
     for(int i=0;i<19;i++) if(c->Map[i]>19 || c->Map[i]==12 || c->Map[i]==13) return 0;
     for(int i=0;i<32;i++) if(c->Reserved[i]) return 0;
     return 1;
+}
+// Amplify weak effects while preserving silence and the motor command limit.
+static uint8_t StadiaMotor(uint8_t input,uint8_t gain) {
+    unsigned value=(unsigned)input*gain/100;
+    return (uint8_t)(value>255?255:value);
 }
 static void StadiaPut16(uint8_t* out,int value) {out[0]=(uint8_t)value;out[1]=(uint8_t)(value>>8);}
 static int StadiaAxis(uint8_t raw,int deadzone,int sensitivity,int invert) {

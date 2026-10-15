@@ -1,4 +1,4 @@
-// UMDF2 HID transport minidriver that presents a Stadia controller as an Xbox
+﻿// UMDF2 HID transport minidriver that presents a Stadia controller as an Xbox
 // Wireless Controller, in the HID format those use over Bluetooth.
 //
 // The inbox xinputhid filter sits above this stack and turns the HID reports
@@ -427,6 +427,7 @@ GetFeature(PDEVICE_CONTEXT Context, WDFREQUEST Request)
     RtlCopyMemory(report + 45, &Context->BluetoothAddress, sizeof(UINT64));
     report[53]=STADIA_CONFIG_VERSION;
     RtlCopyMemory(report + 54,&Context->ConfigurationPersistenceStatus,sizeof(NTSTATUS));
+    report[59]=1; // Saturating motor gain up to 200 percent.
     report[58]=1; // Raw, bounded motor preview without changing configuration.
     ReleaseSRWLockShared(&Context->Lock);
     return CopyToRequest(Request, report, sizeof(report));

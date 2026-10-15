@@ -1,4 +1,4 @@
-#include "../driver/configuration.h"
+﻿#include "../driver/configuration.h"
 #include <stdio.h>
 #include <stdlib.h>
 static int checks=0;
@@ -30,5 +30,17 @@ int main() {
     c.LeftSensitivity=0;c.Checksum=StadiaConfigChecksum(&c);Assert(!StadiaConfigValid(&c),"reject zero sensitivity");
     StadiaConfigDefault(&c);c.Map[0]=255;c.Checksum=StadiaConfigChecksum(&c);Assert(!StadiaConfigValid(&c),"reject invalid destination");
     StadiaConfigDefault(&c);c.Checksum^=1;Assert(!StadiaConfigValid(&c),"reject corrupt report");
+    for(int gain=0;gain<=200;gain++) {
+        int previous=0;
+        for(int input=0;input<=255;input++) {
+            int value=StadiaMotor((uint8_t)input,(uint8_t)gain);
+            Assert(value==(input*gain/100>255?255:input*gain/100),"motor saturation");
+            Assert(value>=previous,"motor monotonicity");previous=value;
+            if(gain==100)Assert(value==input,"unity gain unchanged");
+            if(input==0||gain==0)Assert(value==0,"motor silence preserved");
+        }
+    }
+    StadiaConfigDefault(&c);c.StrongScale=200;c.WeakScale=150;c.Checksum=StadiaConfigChecksum(&c);Assert(StadiaConfigValid(&c),"amplified profile accepted");
+    c.StrongScale=201;c.Checksum=StadiaConfigChecksum(&c);Assert(!StadiaConfigValid(&c),"excessive gain rejected");
     printf("PASS: %d checks against the driver's actual translation code.\n",checks);return 0;
 }

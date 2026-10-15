@@ -1,4 +1,4 @@
-// Stadia protocol: translates the controller's input reports to Xbox controls
+﻿// Stadia protocol: translates the controller's input reports to Xbox controls
 // and rumble to its output report. The transports (usb.c, bluetooth.c) carry
 // the reports.
 
@@ -87,8 +87,8 @@ SetRumble(PDEVICE_CONTEXT Context, UCHAR Strong, UCHAR Weak,BOOLEAN Scale)
     NTSTATUS status;
     if(Scale) {
     AcquireSRWLockShared(&Context->Lock);
-    Strong = (UCHAR)(Strong * Context->Configuration.StrongScale / 100);
-    Weak = (UCHAR)(Weak * Context->Configuration.WeakScale / 100);
+    Strong = StadiaMotor(Strong,Context->Configuration.StrongScale);
+    Weak = StadiaMotor(Weak,Context->Configuration.WeakScale);
     ReleaseSRWLockShared(&Context->Lock);
     }
     report[1] = report[2] = Strong; report[3] = report[4] = Weak;

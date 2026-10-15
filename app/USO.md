@@ -1,4 +1,4 @@
-# StadiaLink 1.0.1
+﻿# StadiaLink 1.2.1
 
 Selecciona un perfil, ajusta los controles y pulsa Guardar y aplicar. Los cambios del perfil se descartan al cambiar de pestaña sin guardar.
 
@@ -11,3 +11,5 @@ Selecciona un perfil, ajusta los controles y pulsa Guardar y aplicar. Los cambio
 El inicio con Windows se guarda al marcar la casilla. Los atajos necesitan StadiaLink abierto, también en la bandeja. Configura la misma combinación en el juego o Discord para usar pulsar para hablar.
 
 Los perfiles se conservan en `%LOCALAPPDATA%/StadiaStudio/profiles.json`; la ruta mantiene compatibilidad con las instalaciones anteriores. La desinstalación conserva los perfiles y permite elegir si retirar el controlador.
+
+La fuerza de vibración se aplica y guarda al mover las barras. Las pruebas usan la misma ganancia que el juego. En Ajustes puedes comprobar nuevas versiones y abrir sus descargas en GitHub; la descarga y la instalación son manuales. El paquete de actualización conserva perfiles y requiere un controlador compatible.

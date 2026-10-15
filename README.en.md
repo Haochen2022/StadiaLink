@@ -1,8 +1,8 @@
-<div align="center">
+﻿<div align="center">
   <img src="app/assets/readme-logo.svg" width="112" height="112" alt="StadiaLink logo">
   <h1>StadiaLink</h1>
   <p><strong>Your Stadia. Your way.</strong></p>
-  <p>Stadia controller configuration for Windows 11 x64 · Version 1.0.1</p>
+  <p>Stadia controller configuration for Windows 11 x64 · Version 1.2.1</p>
   <p><a href="https://github.com/minysito/StadiaLink/releases/latest"><strong>⬇ Download</strong></a> · <a href="https://github.com/minysito/StadiaLink/issues">Report an issue</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + Bluetooth</p>
   <p><a href="README.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <strong><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</strong> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <a href="README.de.md"><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</a></p>
@@ -84,7 +84,7 @@ If MSVC is missing, check Visual Studio's C++ workload. Missing headers or libra
 
 ## ⚙️ Usage
 
-Adjust a profile and click **Save and apply**. Switching tabs discards unsaved profile changes. The Windows startup checkbox saves immediately and starts StadiaLink in the tray when that user signs in. Continuous vibration stops with **Stop**, on tab changes, disconnection or app exit.
+Vibration gain applies and saves as you move its sliders. For buttons, language and other profile changes, click **Save and apply**. Switching tabs discards unsaved profile changes. The Windows startup checkbox saves immediately and starts StadiaLink in the tray when that user signs in. Continuous vibration stops with **Stop**, on tab changes, disconnection or app exit.
 
 Keyboard shortcuts require the app to remain open, including in the tray. Configure the same push-to-talk key or combination in your game or voice app. The driver retains the applied XInput configuration when the interface closes.
 
@@ -128,3 +128,5 @@ Upstream reference: [commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://gi
 ## ✨ Development with ChatGPT / Codex
 
 The project is managed and developed with **ChatGPT / Codex**, using **vibe coding**: the project owner defines features and reviews results; Codex helps implement, investigate, document and run checks. Physical-controller testing and change review are part of the work. This assistance does not imply certification or endorsement by OpenAI, Google or Microsoft.
+
+Vibration gain applies and saves as you move its sliders. Tests use the same gain as games. The app checks for releases at startup and every six hours; downloads are manual from Settings. `StadiaLink.Setup.exe` includes the app and driver. `StadiaLink.Update.exe` updates only the app, preserves profiles and requires a compatible installed driver; otherwise use the full installer.

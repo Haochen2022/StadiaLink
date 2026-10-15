@@ -32,12 +32,14 @@ namespace StadiaStudio {
             magnitude=Math.Min(32766,magnitude*sensitivity/100);
             return (value<0?-1:1)*(invert?-1:1)*magnitude/32766.0;
         }
+        public Profile WithMotorGains(int? strong,int? weak){Profile copy=Clone();if(strong.HasValue)copy.StrongScale=strong.Value;if(weak.HasValue)copy.WeakScale=weak.Value;copy.Validate();return copy;}
+        public bool SameControls(Profile other){byte[] left=ToReport(),right=other.ToReport();left[8]=left[9]=left[63]=right[8]=right[9]=right[63]=0;return left.SequenceEqual(right);}
         public Profile Clone() { return FromJson(ToJson()); }
         public void Validate() {
             if(Version!=1 || String.IsNullOrWhiteSpace(Name) || Name.Length>60 || Name.Any(Char.IsControl) ||
                 Flags<0 || Flags>63 || LeftDeadzone<0 || LeftDeadzone>40 || RightDeadzone<0 || RightDeadzone>40 ||
                 LeftSensitivity<50 || LeftSensitivity>200 || RightSensitivity<50 || RightSensitivity>200 ||
-                TriggerDeadzone<0 || TriggerDeadzone>40 || StrongScale<0 || StrongScale>100 || WeakScale<0 || WeakScale>100 ||
+                TriggerDeadzone<0 || TriggerDeadzone>40 || StrongScale<0 || StrongScale>200 || WeakScale<0 || WeakScale>200 ||
                 TriggerThreshold<1 || TriggerThreshold>100 || Map==null || Map.Length!=19 ||
                 Map.Any(x=>x<0 || x>19 || x==12 || x==13)) throw new InvalidDataException("El perfil contiene valores no válidos.");
             EnsureActions();

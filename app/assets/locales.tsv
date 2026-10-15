@@ -264,3 +264,24 @@ Query intervals|Query intervals|Intervalles des requêtes|Abfrageintervalle
  (ms): median=| (ms): median=| (ms) : médiane=| (ms): Median=
 WPF tier=|WPF tier=|Niveau WPF=|WPF-Stufe=
 Stadia Controller|Stadia Controller|Manette Stadia|Stadia-Controller
+Ganancia del juego|Game vibration gain|Gain de vibration du jeu|Vibrationsverstärkung im Spiel
+Potencia de prueba|Test intensity|Intensité du test|Testintensität
+Actualiza el controlador para ampliar la vibración.|Update the driver to amplify vibration.|Mettez à jour le pilote pour amplifier la vibration.|Aktualisieren Sie den Treiber, um die Vibration zu verstärken.
+Prueba enviada.|Test sent.|Test envoyé.|Test gesendet.
+Señal de prueba|Test signal|Signal de test|Testsignal
+Actualizaciones|Updates|Mises à jour|Updates
+Buscar actualizaciones|Check for updates|Rechercher des mises à jour|Nach Updates suchen
+Buscando actualizaciones…|Checking for updates…|Recherche de mises à jour…|Updates werden gesucht…
+La aplicación está actualizada.|The app is up to date.|L’application est à jour.|Die App ist aktuell.
+Nueva versión disponible:|New version available:|Nouvelle version disponible :|Neue Version verfügbar:
+Actualización disponible|Update available|Mise à jour disponible|Update verfügbar
+No se pudieron comprobar las actualizaciones.|Could not check for updates.|Impossible de rechercher les mises à jour.|Updates konnten nicht geprüft werden.
+Ver descargas en GitHub|View downloads on GitHub|Voir les téléchargements sur GitHub|Downloads auf GitHub anzeigen
+Actualizar StadiaLink|Update StadiaLink|Mettre à jour StadiaLink|StadiaLink aktualisieren
+Actualiza la aplicación instalada y conserva tus perfiles.|Update the installed app and keep your profiles.|Mettez à jour l’application installée en conservant vos profils.|Installierte App aktualisieren und Profile behalten.
+Aplicación y perfiles conservados. El controlador no se modifica.|App updated and profiles kept. The driver stays unchanged.|Application mise à jour et profils conservés. Le pilote reste inchangé.|App aktualisiert und Profile behalten. Der Treiber bleibt unverändert.
+Esta actualización requiere el instalador completo.|This update requires the full installer.|Cette mise à jour nécessite l’installateur complet.|Für dieses Update ist das vollständige Installationsprogramm erforderlich.
+Hay una versión más reciente instalada.|A newer version is already installed.|Une version plus récente est déjà installée.|Eine neuere Version ist bereits installiert.
+Instalador completo|Full installer|Installateur complet|Vollständiges Installationsprogramm
+Actualización de la aplicación|App update|Mise à jour de l’application|App-Update
+Salida de prueba:|Test output:|Sortie de test :|Testausgabe:

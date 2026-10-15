@@ -11,8 +11,8 @@ using System.Reflection;
 [assembly:AssemblyDescription("Native Stadia controller settings")]
 [assembly:AssemblyCompany("StadiaLink")]
 [assembly:AssemblyProduct("StadiaLink")]
-[assembly:AssemblyVersion("1.0.1.0")]
-[assembly:AssemblyFileVersion("1.0.1.0")]
+[assembly:AssemblyVersion("1.2.1.0")]
+[assembly:AssemblyFileVersion("1.2.1.0")]
 
 namespace StadiaStudio {
     public static class Entry {
@@ -29,6 +29,7 @@ namespace StadiaStudio {
                     if(!acquired){if(!args.Contains("--tray"))MessageBox.Show(I18n.T("StadiaLink ya está abierto."),"StadiaLink");return 0;}
                     Application app=new Application();app.DispatcherUnhandledException+=(s,e)=>{string log=Log(e.Exception);MessageBox.Show(I18n.T("Se produjo un error. Detalles en ")+log,"StadiaLink");e.Handled=true;};
                     MainWindow window=new MainWindow();
+                    if(args.Length==2&&args[0]=="--motor-live-test")window.Loaded+=async(s,e)=>{try{await window.VerifyLiveMotorGains(args[1]);}catch(Exception ex){File.WriteAllText(args[1]+".error.txt",ex.ToString());Environment.ExitCode=1;}finally{window.Close();}};
                     if(args.Length==2&&args[0]=="--responsive-test")window.Loaded+=async(s,e)=>{try{await window.VerifyResponsive(args[1]);}catch(Exception ex){Directory.CreateDirectory(args[1]);File.WriteAllText(Path.Combine(args[1],"error.txt"),ex.ToString());Environment.ExitCode=1;}finally{window.Close();}};
                     if(args.Length==2&&args[0]=="--continuous-test")window.Loaded+=(s,e)=>{DispatcherTimer test=new DispatcherTimer{Interval=TimeSpan.FromSeconds(2)};test.Tick+=async(a,b)=>{test.Stop();try{await window.VerifyContinuous(args[1]);}catch(Exception ex){File.WriteAllText(args[1]+".error.txt",ex.ToString());Environment.ExitCode=1;}finally{window.Close();}};test.Start();};
                     if(args.Length==2&&args[0]=="--startup-setting-test")window.Loaded+=(s,e)=>{try{window.VerifyStartupSetting(args[1]);}catch(Exception ex){File.WriteAllText(args[1]+".error.txt",ex.ToString());Environment.ExitCode=1;}finally{window.Close();}};
@@ -117,6 +118,9 @@ namespace StadiaStudio {
             Assert(Profile.AxisValue(255,0,200,false)==1&&Profile.AxisValue(0,0,100,false)==-1,"axis endpoints and saturation");
             Assert(Profile.AxisValue(150,0,100,true)==-Profile.AxisValue(150,0,100,false),"preview inversion");
             Profile p=new Profile();Assert(p.ToReport().Length==64,"report size");Assert(Profile.FromReport(p.ToReport()).ToJson()==p.ToJson(),"report roundtrip");
+            UpdateChecker.Verify();Assert(MainWindow.MotorOutputPercent(127,0)==0&&MainWindow.MotorOutputPercent(127,100)==50&&MainWindow.MotorOutputPercent(127,200)==100&&MainWindow.MotorOutputPercent(255,200)==100,"test gain matches bounded motor output");
+            Assert(MainWindow.TestPower(255,100)==255&&MainWindow.TestPower(255,0)==0&&MainWindow.TestPower(255,50)==127,"full-range motor preview");
+            Profile amplified=new Profile{StrongScale=200,WeakScale=150};Assert(Profile.FromReport(amplified.ToReport()).StrongScale==200&&Profile.FromJson(amplified.ToJson()).WeakScale==150,"amplified profiles roundtrip");
             p.Name="Perfil ñ";p.Flags=63;p.Map[0]=2;p.LeftDeadzone=23;p.StrongScale=38;Assert(Profile.FromJson(p.ToJson()).ToJson()==p.ToJson(),"JSON roundtrip");
             byte[] corrupt=p.ToReport();corrupt[4]^=1;bool rejected=false;try{Profile.FromReport(corrupt);}catch(InvalidDataException){rejected=true;}Assert(rejected,"checksum rejection");
             p.Map[0]=200;rejected=false;try{p.ToReport();}catch(InvalidDataException){rejected=true;}Assert(rejected,"invalid mapping rejection");

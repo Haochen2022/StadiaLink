@@ -1,8 +1,8 @@
-<div align="center">
+﻿<div align="center">
   <img src="app/assets/readme-logo.svg" width="112" height="112" alt="StadiaLink-Logo">
   <h1>StadiaLink</h1>
   <p><strong>Dein Stadia. Deine Einstellungen.</strong></p>
-  <p>Stadia-Controller für Windows 11 x64 konfigurieren · Version 1.0.1</p>
+  <p>Stadia-Controller für Windows 11 x64 konfigurieren · Version 1.2.1</p>
   <p><a href="https://github.com/minysito/StadiaLink/releases/latest"><strong>⬇ Herunterladen</strong></a> · <a href="https://github.com/minysito/StadiaLink/issues">Problem melden</a> · <a href="LICENSE">GPL-3.0</a></p>
   <p>🪟 Windows 11 x64 &nbsp; · &nbsp; 🎮 XInput &nbsp; · &nbsp; 🔗 USB + Bluetooth</p>
   <p><a href="README.md"><img src="app/assets/flag-es.svg" width="24" height="16" alt="ES"> Español</a> &nbsp; | &nbsp; <a href="README.en.md"><img src="app/assets/flag-en.svg" width="24" height="16" alt="EN"> English</a> &nbsp; | &nbsp; <a href="README.fr.md"><img src="app/assets/flag-fr.svg" width="24" height="16" alt="FR"> Français</a> &nbsp; | &nbsp; <strong><img src="app/assets/flag-de.svg" width="24" height="16" alt="DE"> Deutsch</strong></p>
@@ -84,7 +84,7 @@ Prüfe bei fehlendem MSVC die C++-Workload von Visual Studio. Installiere bei fe
 
 ## ⚙️ Verwendung
 
-Passe ein Profil an und klicke auf **Speichern und anwenden**. Ein Tabwechsel verwirft ungespeicherte Profiländerungen. Die Autostart-Checkbox wird sofort gespeichert und startet StadiaLink bei der Anmeldung dieses Benutzers im Infobereich. Dauervibration endet mit **Stoppen**, beim Tabwechsel, beim Verbindungsabbruch oder beim Beenden.
+Die Vibrationsverstärkung wird beim Verschieben der Regler angewendet und gespeichert. Für Tasten, Sprache und andere Profiländerungen auf **Speichern und anwenden** klicken. Ein Tabwechsel verwirft ungespeicherte Profiländerungen. Die Autostart-Checkbox wird sofort gespeichert und startet StadiaLink bei der Anmeldung dieses Benutzers im Infobereich. Dauervibration endet mit **Stoppen**, beim Tabwechsel, beim Verbindungsabbruch oder beim Beenden.
 
 Tastenkombinationen benötigen die geöffnete Anwendung, auch minimiert im Infobereich. Stelle dieselbe Push-to-Talk-Taste oder Kombination im Spiel oder Sprachprogramm ein. Der Treiber behält die angewendete XInput-Konfiguration nach dem Schließen der Oberfläche bei.
 
@@ -128,3 +128,5 @@ Ausgangsstand: [Commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.
 ## ✨ Entwicklung mit ChatGPT / Codex
 
 Das Projekt wird mit **ChatGPT / Codex** verwaltet und entwickelt, im Rahmen von **Vibe Coding**: Der Projektverantwortliche legt Funktionen fest und prüft die Ergebnisse; Codex unterstützt Implementierung, Recherche, Dokumentation und Prüfungen. Tests mit dem physischen Controller und die Prüfung der Änderungen gehören dazu. Diese Unterstützung bedeutet keine Zertifizierung oder Empfehlung durch OpenAI, Google oder Microsoft.
+
+Die Vibrationsverstärkung wird beim Verschieben der Regler angewendet und gespeichert. Tests verwenden dieselbe Verstärkung wie Spiele. Die App sucht beim Start und alle sechs Stunden nach neuen Versionen; der Download erfolgt manuell in den Einstellungen. `StadiaLink.Setup.exe` enthält App und Treiber. `StadiaLink.Update.exe` aktualisiert nur die App, erhält Profile und benötigt einen kompatiblen installierten Treiber; andernfalls das vollständige Installationsprogramm verwenden.

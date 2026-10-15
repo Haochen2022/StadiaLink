@@ -12,3 +12,7 @@ if($LASTEXITCODE){throw 'Translation tests failed'}
 $process=Start-Process "$root\release\StadiaLink.exe" -ArgumentList '--self-test',('"'+[IO.Path]::GetFullPath("$out\model-tests.txt")+'"') -PassThru -Wait -WindowStyle Hidden
 if($process.ExitCode){throw 'Application model tests failed'}
 Get-Content "$out\model-tests.txt"
+$liveResult=[IO.Path]::GetFullPath("$out\live-motor-tests.txt")
+$process=Start-Process "$root\release\StadiaLink.exe" -ArgumentList '--motor-live-test',('"'+$liveResult+'"') -PassThru -Wait -WindowStyle Hidden
+if($process.ExitCode -or -not (Test-Path $liveResult)){throw 'Live vibration slider tests failed'}
+Get-Content $liveResult

@@ -38,6 +38,10 @@ namespace StadiaStudio {
         readonly Dictionary<string,Button> navigation=new Dictionary<string,Button>();
         readonly List<Action<PadStatus>> live=new List<Action<PadStatus>>();
         Button apply;ControllerVisual visual;ComboBox sourcePicker,destinationPicker;TextBlock selectedText,selectedHint,saveState;
+        int? queuedStrong,queuedWeak;bool motorSavePending,pendingMotorApply;
+        Task motorUpdate=Task.CompletedTask;
+        Action persistMotorProfiles;Func<int?,int?,Task<bool>> sendMotorGains;
+        int testIntensity=50;
         int selectedButton=0;string route="Mando";Profile loadedHardware;
         readonly DesktopActions desktopActions=new DesktopActions();Profile activeActions;
         BatteryTray tray;int? batteryLevel;DateTime nextBattery=DateTime.MinValue;bool batteryBusy;
@@ -50,7 +54,24 @@ namespace StadiaStudio {
         public bool SuppressNotifications;
         string draftLanguage=I18n.Saved;
         ComboBox languagePicker;
+        readonly DispatcherTimer updateTimer=new DispatcherTimer{Interval=TimeSpan.FromHours(6)};
+        PublishedRelease newRelease;bool checkingUpdates;string updateStatus="";TextBlock updateText;Button updateDownload;
+        async Task CheckForUpdates(bool manual){
+            if(checkingUpdates)return;checkingUpdates=true;updateStatus="Buscando actualizaciones…";RefreshUpdateStatus();
+            try{
+                PublishedRelease release=await UpdateChecker.Check();if(closed)return;
+                newRelease=UpdateChecker.IsNewer(release,UpdateChecker.Current)?release:null;
+                updateStatus=newRelease==null?"La aplicación está actualizada.":"Nueva versión disponible: "+newRelease.Tag;
+                if(newRelease!=null&&tray!=null){using(var key=Registry.CurrentUser.CreateSubKey(@"Software\StadiaStudio")){
+                    if(manual||(string)key.GetValue("UpdateNotified","")!=newRelease.Tag){tray.Notify(new DeviceNotice("Actualización disponible",updateStatus));key.SetValue("UpdateNotified",newRelease.Tag);}
+                }}
+            }catch(Exception ex){Entry.Log(ex);if(!closed)updateStatus="No se pudieron comprobar las actualizaciones.";}
+            finally{checkingUpdates=false;if(!closed)RefreshUpdateStatus();}
+        }
+        void RefreshUpdateStatus(){if(updateText!=null)I18n.SetText(updateText,updateStatus);if(updateDownload!=null)updateDownload.Visibility=newRelease==null?Visibility.Collapsed:Visibility.Visible;}
+        async void StartUpdateChecks(){if(SuppressNotifications)return;await Task.Delay(5000);if(closed)return;await CheckForUpdates(false);if(!closed)updateTimer.Start();}
         public MainWindow() {
+            persistMotorProfiles=()=>library.Save();sendMotorGains=SendMotorGains;
             Title="StadiaLink";Width=1340;Height=850;MinWidth=820;MinHeight=580;WindowStartupLocation=WindowStartupLocation.CenterScreen;
             Background=Ui.Background;Foreground=Ui.Text;FontFamily=new FontFamily("Segoe UI");WindowStyle=WindowStyle.None;
             WindowChrome.SetWindowChrome(this,new WindowChrome{CaptionHeight=0,CornerRadius=new CornerRadius(16),GlassFrameThickness=new Thickness(0),ResizeBorderThickness=new Thickness(6)});
@@ -66,7 +87,7 @@ namespace StadiaStudio {
                 string target=name;Button b=Ui.Button(name,()=>Navigate(target,true));b.HorizontalContentAlignment=HorizontalAlignment.Left;b.Margin=new Thickness(0,0,0,8);b.BorderThickness=new Thickness(0);
                 navigation[name]=b;nav.Children.Add(b);
             }
-            StackPanel sideFoot=new StackPanel();sideFoot.Children.Add(connection);sideFoot.Children.Add(Ui.Gap(8));sideFoot.Children.Add(deviceText);sideFoot.Children.Add(Ui.Gap(8));sideFoot.Children.Add(batteryText);sideFoot.Children.Add(Ui.Gap(20));sideFoot.Children.Add(Ui.T("StadiaLink 1.0.1",10,Ui.Muted));Grid.SetRow(sideFoot,2);side.Children.Add(sideFoot);sidebar.Child=side;shell.Children.Add(sidebar);
+            StackPanel sideFoot=new StackPanel();sideFoot.Children.Add(connection);sideFoot.Children.Add(Ui.Gap(8));sideFoot.Children.Add(deviceText);sideFoot.Children.Add(Ui.Gap(8));sideFoot.Children.Add(batteryText);sideFoot.Children.Add(Ui.Gap(20));sideFoot.Children.Add(Ui.T("StadiaLink 1.2.1",10,Ui.Muted));Grid.SetRow(sideFoot,2);side.Children.Add(sideFoot);sidebar.Child=side;shell.Children.Add(sidebar);
             Grid main=new Grid{Margin=new Thickness(30,0,30,0)};Grid.SetColumn(main,1);shell.Children.Add(main);
             main.RowDefinitions.Add(new RowDefinition{Height=new GridLength(34)});main.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});main.RowDefinitions.Add(new RowDefinition());main.RowDefinitions.Add(new RowDefinition{Height=new GridLength(30)});
             Grid chrome=new Grid();chrome.MouseLeftButtonDown+=(s,e)=>{if(e.ClickCount==2)WindowState=WindowState==WindowState.Maximized?WindowState.Normal:WindowState.Maximized;else if(e.LeftButton==MouseButtonState.Pressed)DragMove();};
@@ -80,9 +101,10 @@ namespace StadiaStudio {
             apply=Ui.Button("Guardar y aplicar",()=>Run(ApplyDraft),true);actions.Children.Add(apply);Grid.SetRow(header,1);main.Children.Add(header);
             Grid.SetRow(page,2);main.Children.Add(page);footer.VerticalAlignment=VerticalAlignment.Center;footer.TextTrimming=TextTrimming.CharacterEllipsis;Grid.SetRow(footer,3);main.Children.Add(footer);
             SizeChanged+=(s,e)=>{bool compact=ActualWidth<1100;shell.ColumnDefinitions[0].Width=new GridLength(compact?160:208);sidebar.Padding=new Thickness(compact?12:20,18,compact?12:20,14);main.Margin=new Thickness(compact?16:24,0,compact?16:24,0);};
-            Content=shell;Navigate("Mando");timer.Interval=TimeSpan.FromMilliseconds(8);timer.Tick+=(s,e)=>{ConsumeInput();Poll();};Loaded+=(s,e)=>{tray=new BatteryTray(RestoreFromTray,Close);Task.Factory.StartNew(SampleInput,CancellationToken.None,TaskCreationOptions.LongRunning,TaskScheduler.Default);CompositionTarget.Rendering+=RenderFrame;timer.Start();Poll();};
+            Content=shell;Navigate("Mando");timer.Interval=TimeSpan.FromMilliseconds(8);timer.Tick+=(s,e)=>{ConsumeInput();Poll();};Loaded+=(s,e)=>{tray=new BatteryTray(RestoreFromTray,Close);tray.UpdateClicked=()=>{RestoreFromTray();Navigate("Ajustes");UpdateLayout();if(updateText!=null)updateText.BringIntoView();};Task.Factory.StartNew(SampleInput,CancellationToken.None,TaskCreationOptions.LongRunning,TaskScheduler.Default);CompositionTarget.Rendering+=RenderFrame;timer.Start();Poll();StartUpdateChecks();};
+            updateTimer.Tick+=async(s,e)=>await CheckForUpdates(false);
             StateChanged+=(s,e)=>{if(WindowState==WindowState.Minimized){Hide();ShowInTaskbar=false;}};
-            Closed+=(s,e)=>{closed=true;stopSampling=true;if(vibrationCancel!=null)vibrationCancel.Cancel();CompositionTarget.Rendering-=RenderFrame;timer.Stop();desktopActions.Dispose();if(tray!=null)tray.Dispose();if(pad!=null)pad.Dispose();};
+            Closed+=(s,e)=>{if(motorSavePending){try{persistMotorProfiles();motorSavePending=false;}catch(Exception ex){Entry.Log(ex);}}closed=true;updateTimer.Stop();stopSampling=true;if(vibrationCancel!=null)vibrationCancel.Cancel();CompositionTarget.Rendering-=RenderFrame;timer.Stop();desktopActions.Dispose();if(tray!=null)tray.Dispose();if(pad!=null)pad.Dispose();};
         }
         void RestoreFromTray(){ShowInTaskbar=true;Show();WindowState=WindowState.Normal;Activate();}
         Button WindowButton(string text,Action click){Button b=Ui.Button(text,click);b.MinHeight=30;b.Width=40;b.Padding=new Thickness(4);b.Margin=new Thickness(4,2,0,2);b.BorderThickness=new Thickness(0);b.Background=Ui.Background;return b;}
@@ -182,19 +204,48 @@ namespace StadiaStudio {
             Button noDeadzone=Ui.Button("Sin zona muerta",()=>{deadzoneSlider.Value=0;});noDeadzone.MinHeight=30;noDeadzone.Padding=new Thickness(10,4,10,4);s.Children.Add(noDeadzone);s.Children.Add(Ui.Gap(8));
             SliderField(s,"Sensibilidad",50,200,right?draft.RightSensitivity:draft.LeftSensitivity,v=>{if(right)draft.RightSensitivity=v;else draft.LeftSensitivity=v;}," %");Check(s,"Invertir eje horizontal",right?4:1);Check(s,"Invertir eje vertical",right?8:2);return Ui.Card(s);
         }
-        Slider SliderField(StackPanel panel,string name,int min,int max,int current,Action<int> set,string suffix) {
+        Slider SliderField(StackPanel panel,string name,int min,int max,int current,Action<int> set,string suffix,bool immediate=false) {
             Grid label=new Grid{Margin=new Thickness(0,0,0,8)};label.Children.Add(Ui.T(name,13));TextBlock value=Ui.T(current+suffix,13,Ui.Lime,true);value.HorizontalAlignment=HorizontalAlignment.Right;label.Children.Add(value);panel.Children.Add(label);
             Slider slider=new Slider{Minimum=min,Maximum=max,Value=current,TickFrequency=1,IsSnapToTickEnabled=true,SmallChange=1,LargeChange=5,Margin=new Thickness(0,0,0,18),Foreground=Ui.Lime};
-            slider.ValueChanged+=(s,e)=>{int v=(int)Math.Round(slider.Value);I18n.SetText(value,v+suffix);set(v);MarkDirty();UpdateLive();};panel.Children.Add(slider);return slider;
+            slider.ValueChanged+=(s,e)=>{int v=(int)Math.Round(slider.Value);I18n.SetText(value,v+suffix);set(v);if(!immediate)MarkDirty();UpdateLive();};panel.Children.Add(slider);return slider;
         }
         void Check(StackPanel panel,string name,int flag) {
             CheckBox check=new CheckBox{Content=I18n.T(name),IsChecked=(draft.Flags&flag)!=0};check.Checked+=(s,e)=>{draft.Flags|=flag;MarkDirty();};check.Unchecked+=(s,e)=>{draft.Flags&=~flag;MarkDirty();};I18n.Remember(check,name);panel.Children.Add(check);
         }
+        void SetMotorGain(bool strong,int value){
+            Profile saved=library.Profiles.First(p=>p.Name==originalName);
+            if(strong){draft.StrongScale=value;saved.StrongScale=value;queuedStrong=value;}
+            else{draft.WeakScale=value;saved.WeakScale=value;queuedWeak=value;}
+            motorSavePending=true;pendingMotorApply=true;
+            if(motorUpdate.IsCompleted)motorUpdate=FlushMotorGains();
+        }
+        async Task FlushMotorGains(){
+            while(!closed&&(queuedStrong.HasValue||queuedWeak.HasValue)){
+                await Task.Delay(70);if(closed)return;
+                int? strong=queuedStrong,weak=queuedWeak;queuedStrong=queuedWeak=null;
+                try{
+                    if(motorSavePending){persistMotorProfiles();motorSavePending=false;}
+                    bool applied=await sendMotorGains(strong,weak);pendingMotorApply=!applied;
+                    if(!closed)I18n.SetText(footer,dirty?"Sin guardar":applied?"Aplicado al mando":"Guardado · pendiente de conexión");
+                }catch(Exception ex){pendingMotorApply=true;Entry.Log(ex);if(!closed)I18n.SetText(footer,I18n.Error(ex));}
+            }
+        }
+        Task<bool> SendMotorGains(int? strong,int? weak){
+            Controller device=pad;if(device==null)return Task.FromResult(false);
+            return Task.Run(()=>{lock(device){
+                if(closed||device!=pad)return false;
+                PadStatus current=device.Read();if(current.ConfigVersion!=1)throw new InvalidOperationException("Instala el controlador incluido para configurar el mando.");
+                if((strong>100||weak>100)&&!current.RumbleGainSupported)throw new InvalidOperationException("Actualiza el controlador para ampliar la vibración.");
+                Profile updated=device.Configuration().WithMotorGains(strong,weak);device.Apply(updated);return true;
+            }});
+        }
+        public static int MotorOutputPercent(int input,int gain){return (int)Math.Round(Math.Min(255,input*gain/100)*100/255.0);}
+        void AddMotorOutput(StackPanel panel,bool strong){TextBlock output=Ui.T("",12,Ui.Muted);output.Margin=new Thickness(0,0,0,12);panel.Children.Add(output);live.Add(s=>I18n.SetText(output,"Salida de prueba: "+MotorOutputPercent(TestPower(255,testIntensity),strong?draft.StrongScale:draft.WeakScale)+" %"));}
         void BuildVibration() {
             StackPanel content=Section("RESPUESTA HÁPTICA","Vibración","");
-            Grid two=Columns(350);StackPanel strong=Section("MOTOR IZQUIERDO","Motor fuerte","");SliderField(strong,"Intensidad",0,100,draft.StrongScale,v=>draft.StrongScale=v," %");strong.Children.Add(Ui.Button("Probar motor izquierdo",()=>Run(()=>TestMotor(110,0)),true));two.Children.Add(Ui.Card(strong));
-            StackPanel weak=Section("MOTOR DERECHO","Motor suave","");SliderField(weak,"Intensidad",0,100,draft.WeakScale,v=>draft.WeakScale=v," %");weak.Children.Add(Ui.Button("Probar motor derecho",()=>Run(()=>TestMotor(0,110)),true));Border wc=Ui.Card(weak);Grid.SetColumn(wc,2);two.Children.Add(wc);content.Children.Add(two);content.Children.Add(Ui.Gap(20));
-            StackPanel actions=new StackPanel{Orientation=Orientation.Horizontal};actions.Children.Add(Ui.Button("Probar ambos motores",()=>Run(()=>TestMotor(85,85))));Button continuous=Ui.Button("Vibración continua",()=>Run(StartContinuous),true);continuous.Margin=new Thickness(10,0,0,0);actions.Children.Add(continuous);Button stop=Ui.Button("Detener vibración",()=>Run(()=>StopMotor()));stop.Margin=new Thickness(10,0,0,0);actions.Children.Add(stop);content.Children.Add(actions);content.Children.Add(Ui.Gap(25));
+            Grid two=Columns(350);StackPanel strong=Section("MOTOR IZQUIERDO","Motor fuerte","");SliderField(strong,"Ganancia del juego",0,200,draft.StrongScale,v=>SetMotorGain(true,v)," %",true);AddMotorOutput(strong,true);strong.Children.Add(Ui.Button("Probar motor izquierdo",()=>Run(()=>TestMotor(255,0)),true));two.Children.Add(Ui.Card(strong));
+            StackPanel weak=Section("MOTOR DERECHO","Motor suave","");SliderField(weak,"Ganancia del juego",0,200,draft.WeakScale,v=>SetMotorGain(false,v)," %",true);AddMotorOutput(weak,false);weak.Children.Add(Ui.Button("Probar motor derecho",()=>Run(()=>TestMotor(0,255)),true));Border wc=Ui.Card(weak);Grid.SetColumn(wc,2);two.Children.Add(wc);content.Children.Add(two);content.Children.Add(Ui.Gap(20));
+            StackPanel power=new StackPanel();TextBlock powerValue=Ui.T(testIntensity+" %",13,Ui.Lime);power.Children.Add(Ui.T("Señal de prueba",13));power.Children.Add(powerValue);Slider powerSlider=new Slider{Minimum=0,Maximum=100,Value=testIntensity,TickFrequency=1,IsSnapToTickEnabled=true,Margin=new Thickness(0,10,0,20)};powerSlider.ValueChanged+=(s,e)=>{testIntensity=(int)Math.Round(powerSlider.Value);I18n.SetText(powerValue,testIntensity+" %");};power.Children.Add(powerSlider);content.Children.Add(power);StackPanel actions=new StackPanel{Orientation=Orientation.Horizontal};actions.Children.Add(Ui.Button("Probar ambos motores",()=>Run(()=>TestMotor(255,255))));Button continuous=Ui.Button("Vibración continua",()=>Run(StartContinuous),true);continuous.Margin=new Thickness(10,0,0,0);actions.Children.Add(continuous);Button stop=Ui.Button("Detener vibración",()=>Run(()=>StopMotor()));stop.Margin=new Thickness(10,0,0,0);actions.Children.Add(stop);content.Children.Add(actions);content.Children.Add(Ui.Gap(25));
             TextBlock state=Ui.T("Conecta el mando para probar la vibración.",13,Ui.Muted);content.Children.Add(Ui.Card(state));live.Add(s=>I18n.SetText(state,s==null?"Conecta el mando para probar la vibración.":s.Bluetooth&&s.OpenError!=0?"El canal Bluetooth no está disponible. Reconecta el mando.":s.RumbleFailed?"El último envío no se completó. Reconecta el mando y vuelve a probar.":vibrationCancel!=null&&!vibrationLoop.IsCompleted?"Vibración continua":"Listo"));page.Children.Add(new ScrollViewer{Content=content});
         }
         void BuildProfiles() {
@@ -228,23 +279,30 @@ namespace StadiaStudio {
             live.Add(s=>I18n.SetText(detail,s==null?"Enciende el Stadia y emparéjalo desde los ajustes Bluetooth de Windows.":s.ConfigVersion!=1?"Mando detectado. Instala el controlador incluido para activar la configuración.":"Conectado por "+(s.Bluetooth?"Bluetooth":"USB")));
             card.Children.Add(Ui.Gap(20));StackPanel buttons=new StackPanel{Orientation=Orientation.Horizontal};buttons.Children.Add(Ui.Button("Abrir ajustes Bluetooth",()=>RunSync(()=>Process.Start("ms-settings:bluetooth"))));Button rescan=Ui.Button("Volver a detectar",()=>{nextDiscovery=DateTime.MinValue;Poll();});rescan.Margin=new Thickness(10,0,0,0);buttons.Children.Add(rescan);card.Children.Add(buttons);card.Children.Add(Ui.Gap(10));card.Children.Add(Ui.Button("Reparar controlador",()=>Run(RepairDriver)));content.Children.Add(Ui.Card(card));content.Children.Add(Ui.Gap(20));
             StackPanel response=Section("RENDIMIENTO","Tiempo de respuesta","");TextBlock measurement=Ui.T("Tiempos de la aplicación",12,Ui.Muted);response.Children.Add(measurement);response.Children.Add(Ui.Gap(12));response.Children.Add(Ui.Button("Medir durante 6 s",()=>Run(()=>MeasureResponse(measurement))));response.Children.Add(Ui.Gap(8));response.Children.Add(Ui.Button("Abrir informe",()=>RunSync(()=>{string report=Path.Combine(ProfileLibrary.DirectoryPath,"logs","response.txt");if(File.Exists(report))Process.Start(report);})));content.Children.Add(Ui.Card(response));content.Children.Add(Ui.Gap(20));
+            StackPanel updates=Section("","Actualizaciones","");
+            updates.Children.Add(Ui.T("StadiaLink "+UpdateChecker.Current.ToString(3),12,Ui.Muted));updates.Children.Add(Ui.Gap(12));
+            updateText=Ui.T(updateStatus,12,Ui.Muted);updates.Children.Add(updateText);updates.Children.Add(Ui.Gap(12));
+            updates.Children.Add(Ui.Button("Buscar actualizaciones",()=>Run(()=>CheckForUpdates(true))));updates.Children.Add(Ui.Gap(8));
+            updateDownload=Ui.Button("Ver descargas en GitHub",()=>RunSync(()=>Process.Start(newRelease==null?UpdateChecker.ReleasesUrl:newRelease.Url)));updates.Children.Add(updateDownload);RefreshUpdateStatus();
+            content.Children.Add(Ui.Card(updates));content.Children.Add(Ui.Gap(20));
             StackPanel about=Section("LINK","Archivos","");
-            about.Children.Add(Ui.Button("Abrir carpeta de perfiles",()=>RunSync(()=>{Directory.CreateDirectory(ProfileLibrary.DirectoryPath);Process.Start(ProfileLibrary.DirectoryPath);})));about.Children.Add(Ui.Gap(16));about.Children.Add(Ui.T("1.0.1 · GPLv3",12,Ui.Muted));about.Children.Add(Ui.Gap(8));about.Children.Add(Ui.T("",12,Ui.Muted));content.Children.Add(Ui.Card(about));page.Children.Add(new ScrollViewer{Content=content});
+            about.Children.Add(Ui.Button("Abrir carpeta de perfiles",()=>RunSync(()=>{Directory.CreateDirectory(ProfileLibrary.DirectoryPath);Process.Start(ProfileLibrary.DirectoryPath);})));about.Children.Add(Ui.Gap(16));about.Children.Add(Ui.T("1.2.1 · GPLv3",12,Ui.Muted));about.Children.Add(Ui.Gap(8));about.Children.Add(Ui.T("",12,Ui.Muted));content.Children.Add(Ui.Card(about));page.Children.Add(new ScrollViewer{Content=content});
         }
         void DeviceChanged(object sender,SelectionChangedEventArgs e){PadInfo info=devicePicker.SelectedItem as PadInfo;if(info==null || (pad!=null && pad.Path==info.Path))return;RunSync(()=>{if(pad!=null)pad.Dispose();pad=new Controller(info.Path);status=null;loadedHardware=null;activeActions=null;desktopActions.Release();batteryLevel=null;nextBattery=DateTime.MinValue;pendingApply=false;nextDiscovery=DateTime.UtcNow.AddSeconds(2);});}
         async Task RepairDriver(){if(pad!=null){pad.Dispose();pad=null;}string file=System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"driver","install.ps1");if(!File.Exists(file))throw new FileNotFoundException("Abre el instalador de StadiaLink para instalar el controlador.");await InstallerActions.RunDriver(file,false);nextDiscovery=DateTime.MinValue;I18n.SetText(footer,"Controlador instalado. Si Windows lo pide, reconecta el mando o reinicia el equipo.");}
         async Task ApplyDraft() {
             draft.Validate();if(library.Profiles.Any(p=>p.Name.Equals(draft.Name,StringComparison.OrdinalIgnoreCase)&&p.Name!=originalName))throw new InvalidOperationException("Ya existe un perfil con ese nombre.");
-            Profile copy=draft.Clone();Controller device=pad;if(device!=null){if(status==null || status.ConfigVersion!=1)throw new InvalidOperationException("Instala el controlador incluido para configurar el mando.");await Task.Run(()=>device.Apply(copy));}
+            Profile copy=draft.Clone();Controller device=pad;if(device!=null){if(status==null || status.ConfigVersion!=1)throw new InvalidOperationException("Instala el controlador incluido para configurar el mando.");if((copy.StrongScale>100||copy.WeakScale>100)&&!status.RumbleGainSupported)throw new InvalidOperationException("Actualiza el controlador para ampliar la vibración.");await motorUpdate;await Task.Run(()=>{lock(device)device.Apply(copy);});}
             if(preferencesDirty){InstallerActions.SavePreferences(draftStartup,draftNotifications);I18n.Save();notificationsEnabled=draftNotifications;if(!notificationsEnabled&&tray!=null)tray.ClearNotifications();preferencesDirty=false;}
             int index=library.Profiles.FindIndex(p=>p.Name==originalName);if(index<0)index=0;library.Profiles[index]=copy;library.Selected=copy.Name;library.Applied=copy.Name;library.Save();originalName=copy.Name;dirty=false;pendingApply=device==null;desktopActions.Release();activeActions=device==null?null:copy.Clone();FillProfiles();if(saveState!=null)I18n.SetText(saveState,device==null?"Guardado · pendiente de conexión":"Aplicado al mando");
             I18n.SetText(footer,device==null?"Perfil guardado. Se aplicará cuando conectes el mando con StadiaLink abierto.":"Perfil guardado y aplicado.");
             if(route=="Perfiles")Navigate("Perfiles");
         }
+        public static byte TestPower(byte input,int percent){return (byte)(input*Math.Max(0,Math.Min(100,percent))/100);}
         async Task TestMotor(byte strong,byte weak) {
             await StopMotor();Controller device=pad;if(device==null)throw new InvalidOperationException("Conecta el mando para probar la vibración.");if(status==null || status.ConfigVersion!=1)throw new InvalidOperationException("Instala el controlador incluido para usar las pruebas.");
             if(!status.RawMotorPreview)throw new InvalidOperationException("Actualiza el controlador incluido para probar ajustes sin guardarlos.");
-            byte s=(byte)(strong*draft.StrongScale/100),w=(byte)(weak*draft.WeakScale/100);await Task.Run(()=>device.Preview(s,w));I18n.SetText(footer,"Prueba enviada. Ajustes sin guardar.");
+            await motorUpdate;byte s=TestPower(strong,testIntensity),w=TestPower(weak,testIntensity);await Task.Run(()=>device.Test(s,w));I18n.SetText(footer,"Prueba enviada.");
         }
         async Task StartContinuous() {
             await StopMotor();Controller device=pad;
@@ -273,7 +331,7 @@ namespace StadiaStudio {
             lock(timingGate){double[] query=readTimes.OrderBy(x=>x).ToArray(),frame=sampleAges.OrderBy(x=>x).ToArray();if(query.Length==0||frame.Length==0)throw new InvalidOperationException("No hay muestras suficientes.");I18n.SetText(result,"HID p95: "+query[(int)((query.Length-1)*.95)].ToString("F2")+" ms · UI p95: "+frame[(int)((frame.Length-1)*.95)].ToString("F2")+" ms");}
         }
         async Task ContinuousLoop(Controller device,CancellationToken token) {
-            try {while(!token.IsCancellationRequested&&pad==device&&!closed){byte strong=(byte)(110*draft.StrongScale/100),weak=(byte)(110*draft.WeakScale/100);await Task.Run(()=>device.Preview(strong,weak));await Task.Delay(150,token);}}
+            try {while(!token.IsCancellationRequested&&pad==device&&!closed){byte strong=TestPower(255,testIntensity),weak=strong;await motorUpdate;await Task.Run(()=>device.Test(strong,weak));await Task.Delay(150,token);}}
             catch(OperationCanceledException){}
             catch(Exception ex){if(!closed)I18n.SetText(footer,I18n.Error(ex));}
             try{await Task.Run(()=>device.Test(0,0));}catch{}
@@ -291,8 +349,12 @@ namespace StadiaStudio {
                 if(pad!=null){Controller device=pad;if(failedDevice==device)throw new IOException("Controller disconnected.");if(sampledDevice!=device||latestSample==null)return;status=latestSample;if(closed)return;
                     if(status.ConfigVersion==1 && loadedHardware==null){loadedHardware=await Task.Run(()=>device.Configuration());
                         if(!File.Exists(ProfileLibrary.FilePath)&&!dirty){string name=draft.Name;draft=loadedHardware.Clone();draft.Name=name;library.Profiles[0]=draft.Clone();Navigate(route);}
-                        Profile selected=library.Profiles.FirstOrDefault(p=>p.Name==library.Applied);activeActions=selected!=null&&selected.ToReport().SequenceEqual(loadedHardware.ToReport())?selected.Clone():null;desktopActions.Release();nextBattery=DateTime.MinValue;
-                        if(pendingApply){Profile saved=library.Profiles.First(p=>p.Name==originalName).Clone();await Task.Run(()=>device.Apply(saved));activeActions=saved;pendingApply=false;I18n.SetText(footer,"Perfil aplicado.");}
+                        Profile selected=library.Profiles.FirstOrDefault(p=>p.Name==library.Applied);activeActions=selected!=null&&selected.SameControls(loadedHardware)?selected.Clone():null;desktopActions.Release();nextBattery=DateTime.MinValue;
+                        Profile motorProfile=library.Profiles.FirstOrDefault(p=>p.Name==originalName);
+                        if(motorProfile!=null&&(pendingMotorApply||motorProfile.StrongScale!=loadedHardware.StrongScale||motorProfile.WeakScale!=loadedHardware.WeakScale)){
+                            queuedStrong=motorProfile.StrongScale;queuedWeak=motorProfile.WeakScale;if(motorUpdate.IsCompleted)motorUpdate=FlushMotorGains();
+                        }
+                        if(pendingApply){Profile saved=library.Profiles.First(p=>p.Name==originalName).Clone();await motorUpdate;await Task.Run(()=>{lock(device)device.Apply(saved);});activeActions=saved;pendingApply=false;I18n.SetText(footer,"Perfil aplicado.");}
                     }
                 }
             }catch(Exception){if(pad!=null)pad.Dispose();pad=null;status=null;loadedHardware=null;activeActions=null;desktopActions.Release();batteryLevel=null;}
@@ -318,6 +380,22 @@ namespace StadiaStudio {
         }
         public void SetPageForTest(string name){Navigate(name,true);}
         public async Task VerifyLanguages(string directory){Directory.CreateDirectory(directory);string savedCode=I18n.Saved;Profile original=draft.Clone();string oldRoute=route;bool oldDirty=dirty,oldPreferences=preferencesDirty;try{Navigate("Ajustes");foreach(LanguageOption option in I18n.Options){languagePicker.SelectedItem=option;if(I18n.Code!=option.Code)throw new Exception("Language selector failed.");foreach(string tab in new[]{"Mando","Sticks y gatillos","Vibración","Perfiles","Ajustes"}){Navigate(tab);await Dispatcher.InvokeAsync(()=>{},DispatcherPriority.ApplicationIdle);await Task.Delay(40);ExportSnapshot(Path.Combine(directory,option.Code+"-"+tab.Replace(" ","-")+".png"));File.WriteAllLines(Path.Combine(directory,option.Code+"-"+tab.Replace(" ","-")+".txt"),VisualChildren<TextBlock>(this).Select(t=>t.Text).Concat(VisualChildren<ComboBox>(this).Where(c=>c!=languagePicker).SelectMany(c=>c.Items.Cast<object>().Select(i=>i.ToString()))));}VerifyShortcutDialog(Path.Combine(directory,option.Code+"-shortcut.png"));I18n.VerifyCatalog();if(option.Code!="es"&&I18n.T("Guardar y aplicar")=="Guardar y aplicar")throw new Exception("Translation missing.");}languagePicker.SelectedItem=I18n.Options.First(o=>o.Code=="de");Navigate("Mando",true);if(I18n.Code!=savedCode||preferencesDirty)throw new Exception("Pending language was not discarded.");File.WriteAllText(Path.Combine(directory,"result.txt"),"PASS: four language selector values, twenty rendered pages, pending language discarded on tab change, profile data unchanged.");}finally{I18n.Set(savedCode);draftLanguage=savedCode;draft=original;dirty=oldDirty;preferencesDirty=oldPreferences;I18n.TranslateTree(Content as DependencyObject);Navigate(oldRoute);}}
+        public async Task VerifyLiveMotorGains(string file){
+            ProfileLibrary previous=library;Profile oldDraft=draft;string oldName=originalName,oldRoute=route;bool oldDirty=dirty;
+            Action oldPersist=persistMotorProfiles;var oldSend=sendMotorGains;int writes=0,saves=0;Profile hardware=new Profile();hardware.Map[0]=4;
+            try{
+                await motorUpdate;library=ProfileLibrary.Defaults();draft=library.Profiles[0].Clone();originalName=draft.Name;dirty=false;
+                persistMotorProfiles=()=>saves++;sendMotorGains=(strong,weak)=>{hardware=hardware.WithMotorGains(strong,weak);writes++;return Task.FromResult(true);};
+                draft.Map[0]=2;dirty=true;Navigate("Vibración");UpdateLayout();var sliders=VisualChildren<Slider>(page).ToArray();
+                if(sliders.Any(s=>!s.IsMoveToPointEnabled))throw new Exception("Slider track clicks are disabled.");
+                sliders[0].Value=125;sliders[0].Value=150;sliders[1].Value=140;await motorUpdate;
+                if(hardware.StrongScale!=150||hardware.WeakScale!=140||hardware.Map[0]!=4||library.Profiles[0].Map[0]!=1||!dirty||writes!=1||saves!=1)throw new Exception("Live gains applied unrelated edits or failed to coalesce.");
+                Navigate("Mando",true);if(dirty||draft.Map[0]!=1||draft.StrongScale!=150||draft.WeakScale!=140)throw new Exception("Navigation discarded saved motor gains.");
+                sendMotorGains=(strong,weak)=>Task.FromResult(false);SetMotorGain(true,160);await motorUpdate;
+                if(!pendingMotorApply||dirty||library.Profiles[0].StrongScale!=160)throw new Exception("Disconnected gain update was not saved independently.");
+                File.WriteAllText(file,"PASS: live slider updates, coalesced writes, motor-only hardware changes, pending button edits preserved, gains survive navigation, disconnected gains saved without manual apply.");
+            }finally{queuedStrong=queuedWeak=null;motorSavePending=pendingMotorApply=false;persistMotorProfiles=oldPersist;sendMotorGains=oldSend;library=previous;draft=oldDraft;originalName=oldName;dirty=oldDirty;FillProfiles();Navigate(oldRoute);}
+        }
         public void VerifyStartupState(string file){if(IsVisible||ShowInTaskbar||tray==null||!tray.Visible)throw new Exception("Startup did not open in the notification area.");File.WriteAllText(file,"PASS: --tray startup leaves only the notification-area icon; no main window or taskbar button.");}
         public void VerifyShortcutDialog(string file){DispatcherTimer capture=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(400)};Exception failure=null;capture.Tick+=(s,e)=>{capture.Stop();Window dialog=OwnedWindows.Cast<Window>().Single();try{ComboBox keys=VisualChildren<ComboBox>(dialog).First();if(keys.SelectedItem==null)throw new Exception("Default voice shortcut key was not selected.");dialog.UpdateLayout();var bitmap=new RenderTargetBitmap((int)dialog.ActualWidth,(int)dialog.ActualHeight,96,96,PixelFormats.Pbgra32);bitmap.Render(dialog);var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));using(FileStream stream=File.Create(file))encoder.Save(stream);}catch(Exception ex){failure=ex;}finally{dialog.Close();}};capture.Start();EditVoiceShortcut(12,"Pulsar para hablar · Asistente");if(failure!=null)throw failure;}
         public void VerifyExtras(string file){Profile before=draft.Clone();bool startupBefore=draftStartup;Navigate("Ajustes");SetVoiceShortcut(12,120,0,true);SetVoiceShortcut(11,121,3,false);SetVoiceShortcut(10,122,0,false);draft.Validate();if(draft.Actions[12]!=13||draft.Actions[11]!=14||draft.Actions[10]!=14)throw new Exception("Voice shortcut modes failed.");draftStartup=!startupBefore;preferencesDirty=true;MarkDirty();Navigate("Mando",true);if(draft.ToJson()!=before.ToJson()||draftStartup!=InstallerActions.StartWithWindows||preferencesDirty)throw new Exception("Shortcut/preferences drafts were not discarded.");File.AppendAllText(file,Environment.NewLine+"PASS: three voice shortcut drafts and pending startup setting discarded on tab change.");}

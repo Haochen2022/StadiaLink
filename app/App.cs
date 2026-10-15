@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Diagnostics;
@@ -11,8 +11,8 @@ using System.Reflection;
 [assembly:AssemblyDescription("Native Stadia controller settings")]
 [assembly:AssemblyCompany("StadiaLink")]
 [assembly:AssemblyProduct("StadiaLink")]
-[assembly:AssemblyVersion("1.2.1.0")]
-[assembly:AssemblyFileVersion("1.2.1.0")]
+[assembly:AssemblyVersion("1.0.2.0")]
+[assembly:AssemblyFileVersion("1.0.2.0")]
 
 namespace StadiaStudio {
     public static class Entry {

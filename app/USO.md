@@ -1,4 +1,4 @@
-﻿# StadiaLink 1.2.1
+# StadiaLink 1.0.2
 
 Selecciona un perfil, ajusta los controles y pulsa Guardar y aplicar. Los cambios del perfil se descartan al cambiar de pestaña sin guardar.
 

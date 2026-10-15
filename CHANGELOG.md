@@ -1,6 +1,6 @@
-﻿# Changelog
+# Changelog
 
-## 1.2.1
+## 1.0.2
 
 - Improved vibration gain, live adjustments and full-range tests.
 - Added slider track clicks, update notifications and an app-only updater.

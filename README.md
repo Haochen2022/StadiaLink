@@ -127,7 +127,7 @@ Solicita permisos de administrador, elimina los paquetes de este controlador y d
 
 El transporte de vibración Bluetooth utiliza interfaces privadas de Windows, comprobadas en Windows 11 build 26200; pueden cambiar con las actualizaciones del sistema.
 
-GPL-3.0. El controlador parte de [aisk/WinStadia](https://github.com/aisk/WinStadia). Consulta [LICENSE](LICENSE) y [UPSTREAM-README.md](UPSTREAM-README.md). Proyecto independiente de Google y Microsoft.
+GPL-3.0. El controlador parte de [aisk/WinStadia](https://github.com/aisk/WinStadia). Consulta [LICENSE](LICENSE) y [UPSTREAM-README.md](UPSTREAM-README.md). Proyecto independiente, sin afiliación, patrocinio, respaldo ni autorización de Stadia, Google o Microsoft. Consulta también [DISCLAIMER.md](DISCLAIMER.md).
 
 **Código de terceros incorporado: [aisk/WinStadia](https://github.com/aisk/WinStadia).** Es la base del controlador nativo incluido en este repositorio, con modificaciones de StadiaLink. La integración comprende la estructura UMDF, la traducción de entradas Stadia a XInput y los transportes USB/Bluetooth en `driver/`, además de los scripts e INF derivados.
 

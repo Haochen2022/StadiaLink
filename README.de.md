@@ -123,7 +123,7 @@ Bluetooth-Vibration nutzt private Windows-Schnittstellen, getestet auf Windows 1
 
 Vollständiges Original-Repository: **https://github.com/aisk/WinStadia**.
 
-Ausgangsstand: [Commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a). Copyright-Hinweise bleiben erhalten. StadiaLink und seine Änderungen stehen unter **GPL-3.0**; siehe [LICENSE](LICENSE) und [UPSTREAM-README.md](UPSTREAM-README.md). Unabhängiges Projekt ohne Verbindung zu Google oder Microsoft.
+Ausgangsstand: [Commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a). Copyright-Hinweise bleiben erhalten. StadiaLink und seine Änderungen stehen unter **GPL-3.0**; siehe [LICENSE](LICENSE) und [UPSTREAM-README.md](UPSTREAM-README.md). Unabhängiges Projekt ohne Zugehörigkeit zu, Sponsoring, Unterstützung oder Autorisierung durch Stadia, Google oder Microsoft. Siehe auch [DISCLAIMER.md](DISCLAIMER.md).
 
 ## ✨ Entwicklung mit ChatGPT / Codex
 

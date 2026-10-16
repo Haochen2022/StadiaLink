@@ -123,7 +123,7 @@ La vibration Bluetooth utilise des interfaces privées de Windows, testées sur 
 
 Dépôt original complet : **https://github.com/aisk/WinStadia**.
 
-Référence : [commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a). Les avis de copyright sont conservés. StadiaLink et ses modifications sont distribués sous **GPL-3.0** ; voir [LICENSE](LICENSE) et [UPSTREAM-README.md](UPSTREAM-README.md). Projet indépendant de Google et Microsoft.
+Référence : [commit e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a](https://github.com/aisk/WinStadia/commit/e9e84a0a24c3cc13bf7cc7ac2b8baa2b653ce80a). Les avis de copyright sont conservés. StadiaLink et ses modifications sont distribués sous **GPL-3.0** ; voir [LICENSE](LICENSE) et [UPSTREAM-README.md](UPSTREAM-README.md). Projet indépendant, sans affiliation, parrainage, approbation ni autorisation de Stadia, Google ou Microsoft. Voir aussi [DISCLAIMER.md](DISCLAIMER.md).
 
 ## ✨ Développement avec ChatGPT / Codex
 

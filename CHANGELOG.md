@@ -2,7 +2,7 @@
 
 ## 1.0.2-win10.1
 
-- Rebased this fork on upstream StadiaLink 1.0.2, retaining its vibration-gain, update-notification and app-only updater improvements.
+- Rebased this fork on upstream StadiaLink 1.0.2.
 - Added Windows 10 version 2004 (build 19041) or later support alongside Windows 11 x64 in the installer and driver INF.
 - Added Simplified Chinese UI text, a five-language selector, and first-run automatic mapping from the Windows UI language; saved manual language choices still take priority.
 - Refined the controller display: symmetric D-pad selection contours, centered ABXY labels, a clean capture icon, official Stadia glyph, and selectable L2/R2 cards.

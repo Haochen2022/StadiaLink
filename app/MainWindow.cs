@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using Path=System.IO.Path;
 using System.Linq;
@@ -20,7 +20,7 @@ using Microsoft.Win32;
 
 namespace StadiaStudio {
     public sealed class MainWindow:Window {
-        ProfileLibrary library;Profile draft;string originalName;bool dirty,loading,pollBusy,closed,pendingApply;
+        ProfileLibrary library;Profile draft;string originalName;bool dirty,loading,pollBusy,closed,pendingApply,allowExit;
         volatile Controller pad;PadStatus status;List<PadInfo> available=new List<PadInfo>();
         volatile bool stopSampling;volatile Controller sampledDevice,failedDevice;volatile PadStatus latestSample;
         readonly ConcurrentQueue<Tuple<Controller,PadStatus>> inputSamples=new ConcurrentQueue<Tuple<Controller,PadStatus>>();
@@ -36,6 +36,7 @@ namespace StadiaStudio {
         readonly TextBlock connection=Ui.T("BUSCANDO MANDO",10,Ui.Muted,true),deviceText=Ui.T("Sin conexión",12,Ui.Muted);
         readonly ComboBox profilePicker=new ComboBox{Width=170},devicePicker=new ComboBox{MinWidth=210};
         readonly Dictionary<string,Button> navigation=new Dictionary<string,Button>();
+        readonly Dictionary<int,Border> triggerCards=new Dictionary<int,Border>();
         readonly List<Action<PadStatus>> live=new List<Action<PadStatus>>();
         Button apply;ControllerVisual visual;ComboBox sourcePicker,destinationPicker;TextBlock selectedText,selectedHint,saveState;
         int? queuedStrong,queuedWeak;bool motorSavePending,pendingMotorApply;
@@ -52,6 +53,7 @@ namespace StadiaStudio {
         readonly DeviceNotifications notices=new DeviceNotifications();
         bool draftStartup=InstallerActions.StartWithWindows,draftNotifications=InstallerActions.Notifications,notificationsEnabled=InstallerActions.Notifications,preferencesDirty;
         public bool SuppressNotifications;
+        public bool CloseToTrayEnabled=true;
         string draftLanguage=I18n.Saved;
         ComboBox languagePicker;
         readonly DispatcherTimer updateTimer=new DispatcherTimer{Interval=TimeSpan.FromHours(6)};
@@ -93,7 +95,7 @@ namespace StadiaStudio {
             Grid chrome=new Grid();chrome.MouseLeftButtonDown+=(s,e)=>{if(e.ClickCount==2)WindowState=WindowState==WindowState.Maximized?WindowState.Normal:WindowState.Maximized;else if(e.LeftButton==MouseButtonState.Pressed)DragMove();};
             chrome.Children.Add(Ui.T("CONFIGURACIÓN DEL MANDO",10,Ui.Muted,true));((TextBlock)chrome.Children[0]).VerticalAlignment=VerticalAlignment.Center;
             StackPanel windowButtons=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right};
-            windowButtons.Children.Add(WindowButton("—",()=>WindowState=WindowState.Minimized));windowButtons.Children.Add(WindowButton("□",()=>WindowState=WindowState==WindowState.Maximized?WindowState.Normal:WindowState.Maximized));windowButtons.Children.Add(WindowButton("×",Close));chrome.Children.Add(windowButtons);main.Children.Add(chrome);
+            windowButtons.Children.Add(WindowButton("—",()=>WindowState=WindowState.Minimized));windowButtons.Children.Add(WindowButton("□",()=>WindowState=WindowState==WindowState.Maximized?WindowState.Normal:WindowState.Maximized));windowButtons.Children.Add(WindowButton("×",MinimizeToTray));chrome.Children.Add(windowButtons);main.Children.Add(chrome);
             Grid header=new Grid{Margin=new Thickness(0,0,0,12)};header.ColumnDefinitions.Add(new ColumnDefinition());header.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
             StackPanel titles=new StackPanel();TextBlock title=Ui.T("",30,null,true);title.Name="PageTitle";titles.Children.Add(title);header.Children.Add(titles);
             StackPanel actions=new StackPanel{Orientation=Orientation.Horizontal,VerticalAlignment=VerticalAlignment.Center};Grid.SetColumn(actions,1);header.Children.Add(actions);
@@ -101,11 +103,14 @@ namespace StadiaStudio {
             apply=Ui.Button("Guardar y aplicar",()=>Run(ApplyDraft),true);actions.Children.Add(apply);Grid.SetRow(header,1);main.Children.Add(header);
             Grid.SetRow(page,2);main.Children.Add(page);footer.VerticalAlignment=VerticalAlignment.Center;footer.TextTrimming=TextTrimming.CharacterEllipsis;Grid.SetRow(footer,3);main.Children.Add(footer);
             SizeChanged+=(s,e)=>{bool compact=ActualWidth<1100;shell.ColumnDefinitions[0].Width=new GridLength(compact?160:208);sidebar.Padding=new Thickness(compact?12:20,18,compact?12:20,14);main.Margin=new Thickness(compact?16:24,0,compact?16:24,0);};
-            Content=shell;Navigate("Mando");timer.Interval=TimeSpan.FromMilliseconds(8);timer.Tick+=(s,e)=>{ConsumeInput();Poll();};Loaded+=(s,e)=>{tray=new BatteryTray(RestoreFromTray,Close);tray.UpdateClicked=()=>{RestoreFromTray();Navigate("Ajustes");UpdateLayout();if(updateText!=null)updateText.BringIntoView();};Task.Factory.StartNew(SampleInput,CancellationToken.None,TaskCreationOptions.LongRunning,TaskScheduler.Default);CompositionTarget.Rendering+=RenderFrame;timer.Start();Poll();StartUpdateChecks();};
+            Content=shell;Navigate("Mando");timer.Interval=TimeSpan.FromMilliseconds(8);timer.Tick+=(s,e)=>{ConsumeInput();Poll();};Loaded+=(s,e)=>{tray=new BatteryTray(RestoreFromTray,ExitApplication);tray.UpdateClicked=()=>{RestoreFromTray();Navigate("Ajustes");UpdateLayout();if(updateText!=null)updateText.BringIntoView();};Task.Factory.StartNew(SampleInput,CancellationToken.None,TaskCreationOptions.LongRunning,TaskScheduler.Default);CompositionTarget.Rendering+=RenderFrame;timer.Start();Poll();StartUpdateChecks();};
             updateTimer.Tick+=async(s,e)=>await CheckForUpdates(false);
-            StateChanged+=(s,e)=>{if(WindowState==WindowState.Minimized){Hide();ShowInTaskbar=false;}};
+            StateChanged+=(s,e)=>{if(WindowState==WindowState.Minimized)MinimizeToTray();};
+            Closing+=(s,e)=>{if(CloseToTrayEnabled&&!allowExit&&tray!=null){e.Cancel=true;MinimizeToTray();}};
             Closed+=(s,e)=>{if(motorSavePending){try{persistMotorProfiles();motorSavePending=false;}catch(Exception ex){Entry.Log(ex);}}closed=true;updateTimer.Stop();stopSampling=true;if(vibrationCancel!=null)vibrationCancel.Cancel();CompositionTarget.Rendering-=RenderFrame;timer.Stop();desktopActions.Dispose();if(tray!=null)tray.Dispose();if(pad!=null)pad.Dispose();};
         }
+        void MinimizeToTray(){ShowInTaskbar=false;Hide();}
+        void ExitApplication(){allowExit=true;Close();}
         void RestoreFromTray(){ShowInTaskbar=true;Show();WindowState=WindowState.Normal;Activate();}
         Button WindowButton(string text,Action click){Button b=Ui.Button(text,click);b.MinHeight=30;b.Width=40;b.Padding=new Thickness(4);b.Margin=new Thickness(4,2,0,2);b.BorderThickness=new Thickness(0);b.Background=Ui.Background;return b;}
         void FillProfiles(){loading=true;profilePicker.ItemsSource=library.Profiles.Select(p=>I18n.ProfileName(p.Name)).ToArray();profilePicker.SelectedIndex=library.Profiles.FindIndex(p=>p.Name==originalName);loading=false;}
@@ -131,6 +136,7 @@ namespace StadiaStudio {
             StackPanel s=new StackPanel();if(!String.IsNullOrEmpty(eyebrow)&&eyebrow!="LINK"&&!eyebrow.Equals(title,StringComparison.OrdinalIgnoreCase)){s.Children.Add(Ui.T(eyebrow,10,Ui.Lime,true));s.Children.Add(Ui.Gap(10));}s.Children.Add(Ui.T(title,23,null,true));s.Children.Add(Ui.Gap(7));if(!String.IsNullOrEmpty(detail))s.Children.Add(Ui.T(detail,12,Ui.Muted));s.Children.Add(Ui.Gap(20));return s;
         }
         void BuildController() {
+            triggerCards.Clear();
             Grid layout=Columns(282);ScrollViewer controllerScroll=new ScrollViewer{Content=layout,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};controllerScroll.SizeChanged+=(s,e)=>{layout.Height=Math.Max(470,controllerScroll.ActualHeight);};page.Children.Add(controllerScroll);
             Grid left=new Grid{MinHeight=360};left.RowDefinitions.Add(new RowDefinition());left.RowDefinitions.Add(new RowDefinition{Height=new GridLength(122)});layout.Children.Add(left);
             Grid hero=new Grid();hero.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});hero.RowDefinitions.Add(new RowDefinition());hero.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
@@ -142,7 +148,7 @@ namespace StadiaStudio {
             TextBlock hint=Ui.T("Pulsa un botón del dibujo para cambiar su función.",12,Ui.Muted);hint.HorizontalAlignment=HorizontalAlignment.Center;Grid.SetRow(hint,2);hero.Children.Add(hint);left.Children.Add(Ui.Card(hero));
             Grid meters=new Grid{Margin=new Thickness(0,16,0,0)};meters.ColumnDefinitions.Add(new ColumnDefinition());meters.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(12)});meters.ColumnDefinitions.Add(new ColumnDefinition());Grid.SetRow(meters,1);left.Children.Add(meters);
             StackPanel leftMeter=new StackPanel(),rightMeter=new StackPanel();leftMeter.Children.Add(Ui.T("GATILLO IZQUIERDO",10,Ui.Muted,true));rightMeter.Children.Add(Ui.T("GATILLO DERECHO",10,Ui.Muted,true));
-            AddTriggerMeter(leftMeter,8);AddTriggerMeter(rightMeter,9);meters.Children.Add(Ui.Card(leftMeter,17));Border rm=Ui.Card(rightMeter,17);Grid.SetColumn(rm,2);meters.Children.Add(rm);
+            AddTriggerMeter(leftMeter,8);AddTriggerMeter(rightMeter,9);meters.Children.Add(TriggerSettingsCard(leftMeter,17));Border rm=TriggerSettingsCard(rightMeter,18);Grid.SetColumn(rm,2);meters.Children.Add(rm);
             StackPanel details=Section("ASIGNACIÓN","Asignación","Selecciona un botón y su función.");
             details.Children.Add(Ui.T("BOTÓN FÍSICO",10,Ui.Muted,true));details.Children.Add(Ui.Gap(8));sourcePicker=new ComboBox{ItemsSource=Destination.Physical.Select(I18n.T).ToArray(),SelectedIndex=selectedButton};sourcePicker.SelectionChanged+=(s,e)=>{if(sourcePicker.SelectedIndex>=0)SelectButton(sourcePicker.SelectedIndex);};details.Children.Add(sourcePicker);
             details.Children.Add(Ui.Gap(22));selectedText=Ui.T("",18,Ui.Lime,true);details.Children.Add(selectedText);details.Children.Add(Ui.Gap(10));details.Children.Add(Ui.T("FUNCIÓN",10,Ui.Muted,true));details.Children.Add(Ui.Gap(8));
@@ -155,6 +161,15 @@ namespace StadiaStudio {
             
             
             Border card=Ui.Card(new ScrollViewer{Content=details},22);Grid.SetColumn(card,2);layout.Children.Add(card);RefreshSelected();
+        }
+        Border TriggerSettingsCard(StackPanel panel,int id) {
+            Border card=Ui.Card(panel,17);card.Cursor=Cursors.Hand;card.Focusable=true;card.Tag="TriggerSettings:"+Destination.Physical[id];
+            KeyboardNavigation.SetIsTabStop(card,true);
+            System.Windows.Automation.AutomationProperties.SetName(card,Destination.Physical[id]+" · "+I18n.T("Asignación"));
+            card.ToolTip=Destination.Physical[id]+" · "+I18n.T("Asignación");
+            card.MouseLeftButtonDown+=(s,e)=>{SelectButton(id);card.Focus();e.Handled=true;};
+            card.KeyDown+=(s,e)=>{if(e.Key==Key.Enter||e.Key==Key.Space){SelectButton(id);e.Handled=true;}};
+            triggerCards[id]=card;return card;
         }
         void AddTriggerMeter(StackPanel panel,int index) {
             Grid row=new Grid{Margin=new Thickness(0,10,0,6)};TextBlock label=Ui.T(index==8?"L2":"R2",18,null,true),value=Ui.T("0 %",18,Ui.Lime,true);value.HorizontalAlignment=HorizontalAlignment.Right;row.Children.Add(label);row.Children.Add(value);panel.Children.Add(row);
@@ -171,6 +186,7 @@ namespace StadiaStudio {
         void SelectButton(int id){if(id<0 || id>=19)return;selectedButton=id;selectedOnDrawing=true;if(visual!=null)visual.Select(id);if(sourcePicker!=null && sourcePicker.SelectedIndex!=id)sourcePicker.SelectedIndex=id;RefreshSelected();}
         void RefreshSelected() {
             if(route!="Mando" || selectedText==null || destinationPicker==null)return;loading=true;
+            foreach(var card in triggerCards)card.Value.BorderBrush=card.Key==selectedButton?Ui.Lime:Ui.Line;
             draft.EnsureActions();int action=draft.Actions[selectedButton];I18n.SetText(selectedText,Destination.Physical[selectedButton]+"  →  "+(action==0?Destination.Label(draft.Map[selectedButton]):ExtraAction.All.First(a=>a.Id==action).Name));destinationPicker.SelectedItem=Destination.All.First(d=>d.Id==draft.Map[selectedButton]);destinationPicker.Visibility=action==0?Visibility.Visible:Visibility.Collapsed;
             actionPicker.SelectedItem=ExtraAction.All.First(a=>a.Id==action);shortcutOptions.Visibility=action>=13?Visibility.Visible:Visibility.Collapsed;actionHint.Visibility=action==0?Visibility.Collapsed:Visibility.Visible;
             keyPicker.SelectedItem=((KeyOption[])keyPicker.ItemsSource).FirstOrDefault(k=>k.Code==draft.Keys[selectedButton]);foreach(var pair in modifierChecks)pair.Value.IsChecked=(draft.Modifiers[selectedButton]&pair.Key)!=0;
@@ -379,7 +395,7 @@ namespace StadiaStudio {
             PngBitmapEncoder encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));using(FileStream f=File.Create(path))encoder.Save(f);
         }
         public void SetPageForTest(string name){Navigate(name,true);}
-        public async Task VerifyLanguages(string directory){Directory.CreateDirectory(directory);string savedCode=I18n.Saved;Profile original=draft.Clone();string oldRoute=route;bool oldDirty=dirty,oldPreferences=preferencesDirty;try{Navigate("Ajustes");foreach(LanguageOption option in I18n.Options){languagePicker.SelectedItem=option;if(I18n.Code!=option.Code)throw new Exception("Language selector failed.");foreach(string tab in new[]{"Mando","Sticks y gatillos","Vibración","Perfiles","Ajustes"}){Navigate(tab);await Dispatcher.InvokeAsync(()=>{},DispatcherPriority.ApplicationIdle);await Task.Delay(40);ExportSnapshot(Path.Combine(directory,option.Code+"-"+tab.Replace(" ","-")+".png"));File.WriteAllLines(Path.Combine(directory,option.Code+"-"+tab.Replace(" ","-")+".txt"),VisualChildren<TextBlock>(this).Select(t=>t.Text).Concat(VisualChildren<ComboBox>(this).Where(c=>c!=languagePicker).SelectMany(c=>c.Items.Cast<object>().Select(i=>i.ToString()))));}VerifyShortcutDialog(Path.Combine(directory,option.Code+"-shortcut.png"));I18n.VerifyCatalog();if(option.Code!="es"&&I18n.T("Guardar y aplicar")=="Guardar y aplicar")throw new Exception("Translation missing.");}languagePicker.SelectedItem=I18n.Options.First(o=>o.Code=="de");Navigate("Mando",true);if(I18n.Code!=savedCode||preferencesDirty)throw new Exception("Pending language was not discarded.");File.WriteAllText(Path.Combine(directory,"result.txt"),"PASS: four language selector values, twenty rendered pages, pending language discarded on tab change, profile data unchanged.");}finally{I18n.Set(savedCode);draftLanguage=savedCode;draft=original;dirty=oldDirty;preferencesDirty=oldPreferences;I18n.TranslateTree(Content as DependencyObject);Navigate(oldRoute);}}
+        public async Task VerifyLanguages(string directory){Directory.CreateDirectory(directory);string savedCode=I18n.Saved;Profile original=draft.Clone();string oldRoute=route;bool oldDirty=dirty,oldPreferences=preferencesDirty;try{Navigate("Ajustes");foreach(LanguageOption option in I18n.Options){languagePicker.SelectedItem=option;if(I18n.Code!=option.Code)throw new Exception("Language selector failed.");foreach(string tab in new[]{"Mando","Sticks y gatillos","Vibración","Perfiles","Ajustes"}){Navigate(tab);await Dispatcher.InvokeAsync(()=>{},DispatcherPriority.ApplicationIdle);await Task.Delay(40);ExportSnapshot(Path.Combine(directory,option.Code+"-"+tab.Replace(" ","-")+".png"));File.WriteAllLines(Path.Combine(directory,option.Code+"-"+tab.Replace(" ","-")+".txt"),VisualChildren<TextBlock>(this).Select(t=>t.Text).Concat(VisualChildren<ComboBox>(this).Where(c=>c!=languagePicker).SelectMany(c=>c.Items.Cast<object>().Select(i=>i.ToString()))));}VerifyShortcutDialog(Path.Combine(directory,option.Code+"-shortcut.png"));I18n.VerifyCatalog();if(option.Code!="es"&&I18n.T("Guardar y aplicar")=="Guardar y aplicar")throw new Exception("Translation missing.");}languagePicker.SelectedItem=I18n.Options.First(o=>o.Code=="de");Navigate("Mando",true);if(I18n.Code!=savedCode||preferencesDirty)throw new Exception("Pending language was not discarded.");File.WriteAllText(Path.Combine(directory,"result.txt"),"PASS: five language selector values, twenty-five rendered pages, pending language discarded on tab change, profile data unchanged.");}finally{I18n.Set(savedCode);draftLanguage=savedCode;draft=original;dirty=oldDirty;preferencesDirty=oldPreferences;I18n.TranslateTree(Content as DependencyObject);Navigate(oldRoute);}}
         public async Task VerifyLiveMotorGains(string file){
             ProfileLibrary previous=library;Profile oldDraft=draft;string oldName=originalName,oldRoute=route;bool oldDirty=dirty;
             Action oldPersist=persistMotorProfiles;var oldSend=sendMotorGains;int writes=0,saves=0;Profile hardware=new Profile();hardware.Map[0]=4;
@@ -396,6 +412,15 @@ namespace StadiaStudio {
                 File.WriteAllText(file,"PASS: live slider updates, coalesced writes, motor-only hardware changes, pending button edits preserved, gains survive navigation, disconnected gains saved without manual apply.");
             }finally{queuedStrong=queuedWeak=null;motorSavePending=pendingMotorApply=false;persistMotorProfiles=oldPersist;sendMotorGains=oldSend;library=previous;draft=oldDraft;originalName=oldName;dirty=oldDirty;FillProfiles();Navigate(oldRoute);}
         }
+        public void VerifyTrayBehavior(string file){
+            if(tray==null||!tray.Visible)throw new Exception("Notification-area icon missing.");
+            WindowState=WindowState.Normal;ShowInTaskbar=true;Show();MinimizeToTray();
+            if(IsVisible||ShowInTaskbar||!tray.Visible)throw new Exception("Minimize did not keep only the notification-area icon.");
+            RestoreFromTray();if(!IsVisible||!ShowInTaskbar||WindowState!=WindowState.Normal)throw new Exception("Restore from notification area failed.");
+            Close();if(IsVisible||ShowInTaskbar||!IsLoaded||!tray.Visible)throw new Exception("Close did not preserve the background application and notification-area icon.");
+            RestoreFromTray();File.WriteAllText(file,"PASS: minimize hides the main window; close keeps the background process and notification-area icon; tray restore returns a normal taskbar window.");
+        }
+        public void VerifyTrayMenu(string file){if(tray==null||!tray.Visible)throw new Exception("Notification-area icon missing.");tray.VerifyMenu(file);}
         public void VerifyStartupState(string file){if(IsVisible||ShowInTaskbar||tray==null||!tray.Visible)throw new Exception("Startup did not open in the notification area.");File.WriteAllText(file,"PASS: --tray startup leaves only the notification-area icon; no main window or taskbar button.");}
         public void VerifyShortcutDialog(string file){DispatcherTimer capture=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(400)};Exception failure=null;capture.Tick+=(s,e)=>{capture.Stop();Window dialog=OwnedWindows.Cast<Window>().Single();try{ComboBox keys=VisualChildren<ComboBox>(dialog).First();if(keys.SelectedItem==null)throw new Exception("Default voice shortcut key was not selected.");dialog.UpdateLayout();var bitmap=new RenderTargetBitmap((int)dialog.ActualWidth,(int)dialog.ActualHeight,96,96,PixelFormats.Pbgra32);bitmap.Render(dialog);var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));using(FileStream stream=File.Create(file))encoder.Save(stream);}catch(Exception ex){failure=ex;}finally{dialog.Close();}};capture.Start();EditVoiceShortcut(12,"Pulsar para hablar · Asistente");if(failure!=null)throw failure;}
         public void VerifyExtras(string file){Profile before=draft.Clone();bool startupBefore=draftStartup;Navigate("Ajustes");SetVoiceShortcut(12,120,0,true);SetVoiceShortcut(11,121,3,false);SetVoiceShortcut(10,122,0,false);draft.Validate();if(draft.Actions[12]!=13||draft.Actions[11]!=14||draft.Actions[10]!=14)throw new Exception("Voice shortcut modes failed.");draftStartup=!startupBefore;preferencesDirty=true;MarkDirty();Navigate("Mando",true);if(draft.ToJson()!=before.ToJson()||draftStartup!=InstallerActions.StartWithWindows||preferencesDirty)throw new Exception("Shortcut/preferences drafts were not discarded.");File.AppendAllText(file,Environment.NewLine+"PASS: three voice shortcut drafts and pending startup setting discarded on tab change.");}

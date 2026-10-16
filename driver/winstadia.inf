@@ -26,11 +26,90 @@ DefaultDestDir=13
 winstadia.dll=1
 
 [Manufacturer]
-%Provider%=Devices,NTamd64.10.0...22000
+%Provider%=Devices,NTamd64.10.0...19041,NTamd64.10.0...22000
+
+[Devices.NTamd64.10.0...19041]
+%DeviceDesc%=InstallUsbWin10,USB\VID_18D1&PID_9400&MI_01
+%DeviceDesc%=InstallBluetoothWin10,BTHLEDevice\{00001812-0000-1000-8000-00805f9b34fb}_Dev_VID&0218d1_PID&9400
 
 [Devices.NTamd64.10.0...22000]
 %DeviceDesc%=InstallUsb,USB\VID_18D1&PID_9400&MI_01
 %DeviceDesc%=InstallBluetooth,BTHLEDevice\{00001812-0000-1000-8000-00805f9b34fb}_Dev_VID&0218d1_PID&9400
+
+; Windows 10 2004-22H2 predates MsHidUmdf.inf and WUDFRD.inf. Bind the
+; already-inbox mshidumdf.sys and WUDFRd.sys explicitly, as required by the
+; pre-22000 UMDF HID installation model. Windows 11 keeps the modern path below.
+[InstallUsbWin10.NT]
+CopyFiles=DriverCopy
+AddReg=XInput_AddReg
+
+[InstallUsbWin10.NT.hw]
+AddReg=Win10UsbFilters
+
+[Win10UsbFilters]
+HKR,,"LowerFilters",0x00010000,"WUDFRd","WinUSB"
+HKR,,"UpperFilters",0x00010008,"xinputhid"
+
+[InstallUsbWin10.NT.Services]
+Include=winusb.inf
+Needs=WINUSB.NT.Services
+AddService=WUDFRd,0x000001f8,WUDFRD_ServiceInstall
+AddService=mshidumdf,0x000001fa,MsHidUmdf_ServiceInstall
+AddService=xinputhid,0x000001f8,XInput_Service
+
+[InstallUsbWin10.NT.Wdf]
+UmdfService="winstadia",UmdfInstall
+UmdfServiceOrder=winstadia
+UmdfDispatcher=WinUsb
+UmdfKernelModeClientPolicy=AllowKernelModeClients
+UmdfFileObjectPolicy=AllowNullAndUnknownFileObjects
+UmdfMethodNeitherAction=Copy
+UmdfFsContextUsePolicy=CanUseFsContext2
+
+[InstallBluetoothWin10.NT]
+CopyFiles=DriverCopy
+AddReg=XInput_AddReg
+Include=hidbthle.inf
+Needs=HidBthLE.NT
+
+[InstallBluetoothWin10.NT.hw]
+Include=hidbthle.inf
+Needs=HidBthLE.NT.hw
+AddReg=Win10BluetoothFilters
+
+[Win10BluetoothFilters]
+HKR,,"UpperFilters",0x00010008,"xinputhid"
+
+[InstallBluetoothWin10.NT.Services]
+Include=hidbthle.inf
+Needs=HidBthLE.NT.Services
+AddService=xinputhid,0x000001f8,XInput_Service
+
+[InstallBluetoothWin10.NT.Wdf]
+UmdfService="HidOverGatt",HidOverGattInstall
+UmdfService="winstadia",UmdfInstall
+UmdfServiceOrder=HidOverGatt,winstadia
+UmdfKernelModeClientPolicy=AllowKernelModeClients
+UmdfFileObjectPolicy=AllowNullAndUnknownFileObjects
+UmdfMethodNeitherAction=Copy
+UmdfFsContextUsePolicy=CanUseFsContext2
+UmdfHostPriority=PriorityHigh
+
+[WUDFRD_ServiceInstall]
+DisplayName=%WudfRdDisplayName%
+ServiceType=1
+StartType=3
+ErrorControl=1
+ServiceBinary=%12%\WUDFRd.sys
+LoadOrderGroup=Base
+
+[MsHidUmdf_ServiceInstall]
+DisplayName=%MsHidUmdfServiceName%
+ServiceType=1
+StartType=3
+ErrorControl=1
+ServiceBinary=%12%\mshidumdf.sys
+LoadOrderGroup=Base
 
 [InstallUsb.NT]
 CopyFiles=DriverCopy
@@ -129,3 +208,5 @@ Provider="WinStadia"
 DiskName="WinStadia installation disk"
 DeviceDesc="Stadia controller (WinStadia)"
 XInputServiceName="XINPUT HID Filter Driver"
+WudfRdDisplayName="Windows Driver Foundation - User-mode Driver Framework Reflector"
+MsHidUmdfServiceName="UMDF HID minidriver pass-through"

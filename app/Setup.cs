@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
@@ -14,8 +14,8 @@ using Microsoft.Win32;
 
 [assembly:AssemblyTitle("StadiaLink Setup")]
 [assembly:AssemblyProduct("StadiaLink")]
-[assembly:AssemblyVersion("1.0.2.0")]
-[assembly:AssemblyFileVersion("1.0.2.0")]
+[assembly:AssemblyVersion("1.0.2.2")]
+[assembly:AssemblyFileVersion("1.0.2.2")]
 
 namespace StadiaStudio {
     public static class SetupEntry {

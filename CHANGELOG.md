@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2-win10.2
+
+- Fixed Windows 10 USB startup error “This device cannot start. (Code 10)” by using the NativeUSB dispatcher, removing the conflicting WinUSB lower filter, and building with UMDF 2.25.
+- Verified the USB fix on a physical Stadia controller: Device Manager reports status OK.
+
 ## 1.0.2-win10.1
 
 - Rebased this fork on upstream StadiaLink 1.0.2.

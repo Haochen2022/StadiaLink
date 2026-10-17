@@ -1,5 +1,6 @@
 ﻿$ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
+& "$PSScriptRoot\Win10UsbStack.ps1"
 $out=Join-Path $root '.build/app'
 New-Item -ItemType Directory -Force $out | Out-Null
 $vswhere="${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"

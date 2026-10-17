@@ -8,7 +8,7 @@ $root = Split-Path $PSScriptRoot -Parent
 $dependencyRoot = Join-Path $WorkDirectory '.wdk'
 $wdk = Join-Path $dependencyRoot 'wdk\c'
 $sdkVersion = '10.0.26100.0'
-$umdfVersion = '2.31'
+$umdfVersion = '2.25'
 
 if (-not (Test-Path $wdk)) {
     $wdkPackage = 'microsoft.windows.wdk.x64'

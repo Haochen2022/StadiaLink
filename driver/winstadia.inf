@@ -3,7 +3,7 @@
 ; mshidumdf.sys as function driver and this driver below it. That mirrors what
 ; xinputhid.inf sets up for Xbox controllers on Bluetooth.
 ; On USB the driver takes the place of hidusb on the controller's HID
-; interface, with WinUSB at the bottom. On Bluetooth LE it sits on top of the
+; interface, with the NativeUSB dispatcher routing USB I/O. On Bluetooth LE it sits on top of the
 ; inbox HID over GATT driver, in the same driver host.
 ; Depends on MsHidUmdf.inf, which was introduced in Windows build 22000.
 
@@ -46,13 +46,14 @@ AddReg=XInput_AddReg
 [InstallUsbWin10.NT.hw]
 AddReg=Win10UsbFilters
 
+; MsHidUmdf is the HID function driver and WUDFRd is its lower filter.
+; UMDF 2.15+ uses NativeUSB: the reflector routes USB I/O directly, so
+; WinUSB must not be inserted as another filter below the HID minidriver.
 [Win10UsbFilters]
-HKR,,"LowerFilters",0x00010000,"WUDFRd","WinUSB"
+HKR,,"LowerFilters",0x00010000,"WUDFRd"
 HKR,,"UpperFilters",0x00010008,"xinputhid"
 
 [InstallUsbWin10.NT.Services]
-Include=winusb.inf
-Needs=WINUSB.NT.Services
 AddService=WUDFRd,0x000001f8,WUDFRD_ServiceInstall
 AddService=mshidumdf,0x000001fa,MsHidUmdf_ServiceInstall
 AddService=xinputhid,0x000001f8,XInput_Service
@@ -60,7 +61,7 @@ AddService=xinputhid,0x000001f8,XInput_Service
 [InstallUsbWin10.NT.Wdf]
 UmdfService="winstadia",UmdfInstall
 UmdfServiceOrder=winstadia
-UmdfDispatcher=WinUsb
+UmdfDispatcher=NativeUSB
 UmdfKernelModeClientPolicy=AllowKernelModeClients
 UmdfFileObjectPolicy=AllowNullAndUnknownFileObjects
 UmdfMethodNeitherAction=Copy
@@ -197,7 +198,7 @@ UmdfLibraryVersion=2.15.0
 ServiceBinary="%12%\UMDF\Microsoft.Bluetooth.Profiles.HidOverGatt.dll"
 
 [UmdfInstall]
-UmdfLibraryVersion=2.31.0
+UmdfLibraryVersion=2.25.0
 ServiceBinary="%13%\winstadia.dll"
 
 [DriverCopy]
